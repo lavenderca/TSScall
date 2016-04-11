@@ -184,7 +184,7 @@ class TSSCalling(object):
                 for line in f:
                     if not ('track' in line or line == '\n'):
                         chromosome, start, end, reads = line.strip().split()
-                        for i in range(int(start), int(end)):
+                        for i in range(int(start)+1, int(end)+1):
                             bedgraph_list.append({
                                 'chromosome': chromosome,
                                 'start': i,
