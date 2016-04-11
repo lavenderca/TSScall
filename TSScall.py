@@ -464,10 +464,15 @@ class TSSCalling(object):
                     tss['strand']
                     ))
 
+    ## FROM HITS IN SEARCH WINDOWS, CALL TSSs
+    ## COUNT IS RETURNED IN ORDER TO UPDATE INSTANCE VARIABLES
     def callTSSsFromIntersection(self, intersection, read_threshold, base_name, count, tss_type, nearest_allowed):
+        ## ITERATE THROUGH WINDOWS IN INTERSECTION
         for entry in intersection:
             current_entry = entry
+            ## LOOP WHILE 'HITS' IS POPULATED
             while len(current_entry['hits']) != 0:
+                ## CALL A TSS
                 max_reads = float('-inf')
                 max_position = None
                 for hit in current_entry['hits']:
@@ -489,10 +494,12 @@ class TSSCalling(object):
                         'end': max_position,
                         'reads': max_reads,
                         })
+                    ## IF VAL IN ENTRY, ADD TO DICT IN TSS LIST
                     for val in ['transcript_ids', 'genes', 'strand', 'chromosome']:
                         if val in entry:
                             self.tss_list[-1][val] = entry[val]
                     count += 1
+                ## GO THROUGH HITS, KEEP THOSE WITHIN NEAREST_ALLOWED
                 temp = []
                 for hit in current_entry['hits']:
                     if abs(hit[0] - max_position) > nearest_allowed:
