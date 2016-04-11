@@ -140,7 +140,6 @@ class TSSCalling(object):
                     transcript_list[-1]['end'] = self.reference_annotation[transcript]['tr_end']
                 else:
                     transcript_list[-1]['end'] = end
-                #transcript_list[-1]['end'] = transcript_list[-1]['tss'] + 999
             elif self.reference_annotation[transcript]['strand'] == '-':
                 ## MAKE SURE WINDOW START DOES NOT GO PAST TRANSCRIPT START
                 start = transcript_list[-1]['tss'] - 999
@@ -148,7 +147,6 @@ class TSSCalling(object):
                     transcript_list[-1]['start'] = self.reference_annotation[transcript]['tr_end']
                 else:
                     transcript_list[-1]['start'] = start
-                #transcript_list[-1]['start'] = transcript_list[-1]['tss'] - 999
                 transcript_list[-1]['end'] = transcript_list[-1]['tss'] + 1000
 
         merged_windows = []
