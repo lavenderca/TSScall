@@ -534,6 +534,41 @@ class TSSCalling(object):
                     tss['strand']
                     ))
 
+    def callTSSsFromIntersection(self, intersection, read_threshold, base_name, count, tss_type, nearest_allowed):
+        for entry in intersection:
+            temp = entry
+            while len(temp['hits'] != 0):
+                max_reads = float('-inf')
+                max_position = None
+                for hit in temp['hits']:
+                    if hit[1] > max_reads:
+                        max_position = hit[0]
+                        max_reads = hit[1]
+                    elif hit[1] == max_reads:
+                        if temp['strand'] == '+':
+                            if hit[0] < max_position:
+                                max_position = hit[0]
+                        elif temp['strand'] == '-':
+                            if hit[0] > max_position:
+                                max_position = hit[0]
+                if max_reads >= read_threshold:
+                    self.tss_list.append({
+                        'id': self.getID(base_name, count),
+                        'type': tss_type,
+                        'start': max_position,
+                        'end': max_position,
+                        'reads': max_reads,
+                        'transcript_ids': entry['transcript_ids'],
+                        'genes': entry['genes'],
+                        'strand': entry['strand'],
+                        'chromosome': entry['chromosome']
+                        })
+                    count += 1
+                for hit in temp['hits']:
+                    if abs(hit[0] - max_position) <= nearest_allowed:
+                        temp['hits'].remove(hit)
+        return count
+
     def callTSSsFromAnnotation(self, bedgraph_list, read_threshold):
         ref_search_windows = self.createSearchWindowsFromAnnotation()
         self.findIntersectionWithBedGraph(ref_search_windows, bedgraph_list)
