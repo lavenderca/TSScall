@@ -134,9 +134,21 @@ class TSSCalling(object):
             })
             if self.reference_annotation[transcript]['strand'] == '+':
                 transcript_list[-1]['start'] = transcript_list[-1]['tss'] - 1000
-                transcript_list[-1]['end'] = transcript_list[-1]['tss'] + 999
+                ## MAKE SURE WINDOW END DOES NOT GO PAST TRANSCRIPT END
+                end = transcript_list[-1]['tss'] + 999
+                if end > self.reference_annotation[transcript]['tr_end']:
+                    transcript_list[-1]['end'] = self.reference_annotation[transcript]['tr_end']
+                else:
+                    transcript_list[-1]['end'] = end
+                #transcript_list[-1]['end'] = transcript_list[-1]['tss'] + 999
             elif self.reference_annotation[transcript]['strand'] == '-':
-                transcript_list[-1]['start'] = transcript_list[-1]['tss'] - 999
+                ## MAKE SURE WINDOW START DOES NOT GO PAST TRANSCRIPT START
+                start = transcript_list[-1]['tss'] - 999
+                if start < self.reference_annotation[transcript]['tr_start']:
+                    transcript_list[-1]['start'] = self.reference_annotation[transcript]['tr_end']
+                else:
+                    transcript_list[-1]['start'] = start
+                #transcript_list[-1]['start'] = transcript_list[-1]['tss'] - 999
                 transcript_list[-1]['end'] = transcript_list[-1]['tss'] + 1000
 
         merged_windows = []
@@ -288,7 +300,7 @@ class TSSCalling(object):
     def createFilterWindowsFromAnnotationAndCalledTSSs(self):
 
         filter_windows = []
-        
+
         if self.reference_annotation:
             for transcript in self.reference_annotation:
                 filter_windows.append({
@@ -367,7 +379,7 @@ class TSSCalling(object):
     def callUnannotatedTSSsFromIntersection(self, intersection):
         for entry in intersection:
             temp = entry
-            
+
             while len(temp['hits']) != 0:
                 max_reads = float('-inf')
                 max_position = None
@@ -383,7 +395,7 @@ class TSSCalling(object):
                         elif temp['strand'] == '-':
                             if hit[0] > max_position:
                                 max_position = hit[0]
-                
+
                 self.tss_list.append({
                     'id': self.getID('nuTSS', self.unannotated_tss_count),
                     'type': 'unannotated',
@@ -412,7 +424,7 @@ class TSSCalling(object):
     def findTSSExonIntronOverlap(self):
         exons = []
         introns = []
-        
+
         if self.reference_annotation:
             for transcript in self.reference_annotation:
                 for i in range(len(self.reference_annotation[transcript]['exons'])):
@@ -426,7 +438,7 @@ class TSSCalling(object):
                         'start': start,
                         'end': end
                         })
-    
+
                 for i in range(len(self.reference_annotation[transcript]['exons'])-1):
                     strand = self.reference_annotation[transcript]['strand']
                     chromosome = self.reference_annotation[transcript]['chromosome']
@@ -478,7 +490,7 @@ class TSSCalling(object):
         for i in range(1, len(self.tss_list)):
             if not (self.tss_list[i-1]['chromosome'] == self.tss_list[i]['chromosome'] and self.tss_list[i-1]['start'] + self.cluster_threshold >= self.tss_list[i]['start']):
                 current_cluster = self.getID('cluster', self.tss_cluster_count)
-                self.tss_cluster_count += 1 
+                self.tss_cluster_count += 1
             self.tss_list[i]['cluster'] = current_cluster
             if current_cluster not in cluster_count:
                 cluster_count[current_cluster] = 1
@@ -533,7 +545,7 @@ class TSSCalling(object):
         filter_windows = self.createFilterWindowsFromAnnotationAndCalledTSSs()
         filtered_bedgraph = self.filterByWindowsAndThreshold(bedgraph_list, filter_windows, read_threshold)
         unannotated_search_windows = self.createUnannotatedSearchWindowsFromBedgraph(filtered_bedgraph)
-        self.findIntersectionWithBedGraph(unannotated_search_windows, filtered_bedgraph)      
+        self.findIntersectionWithBedGraph(unannotated_search_windows, filtered_bedgraph)
         self.callUnannotatedTSSsFromIntersection(unannotated_search_windows)
 
     def execute(self):
