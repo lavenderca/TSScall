@@ -11,6 +11,70 @@ import math
 import argparse
 import operator
 
+## STRAND_STATUS IS USED TO DETERMINE IF STRAND IS USED IN SORT
+def sortList(input_list, strand_status):
+    if strand_status == 'sort_by_strand':
+        return sorted(input_list, key=lambda k: (
+            k['strand'],
+            k['chromosome'],
+            k['start']
+            ))
+    elif strand_status == 'ignore_strand':
+        return sorted(input_list, key=lambda k: (
+            k['chromosome'],
+            k['start']
+            ))
+
+## ENTRY 1 IS LESS THAN ENTRY 2?
+def isLessThan(entry_1, entry_2):
+    for val in ['strand', 'chromosome', 'start']:
+        if entry_1[val] < entry_2[val]:
+            return True
+        elif entry_1[val] > entry_2[val]:
+            return False
+    return False
+## ENTRY 1 IS WITHIN ENTRY 2?
+def isWithin(entry_1, entry_2):
+    if entry_1['strand'] == entry_2['strand'] and entry_1['chromosome'] == entry_2['chromosome']:
+        if entry_1['start'] >= entry_2['start'] and entry_1['end'] <= entry_2['end']:
+            return True
+    return False
+
+def getID(base_name, count):
+    max_entries = 999999
+    feature_name = base_name + '_'
+    for i in range(len(str(count)), len(str(max_entries))):
+        feature_name += '0'
+    feature_name += str(count)
+    return feature_name
+
+def readInReferenceAnnotation(annotation_file):
+    reference_annotation = dict()
+    with open(annotation_file) as f:
+        for line in f:
+            chromosome, source, feature, start, end, score, strand, frame, attribute = line.strip().split('\t')
+            tr_id = attribute.split('transcript_id')[1].split('\"')[1]
+            if len(attribute.split('gene_id')) > 1:
+                gene = attribute.split('gene_id')[1].split('\"')[1]
+            else:
+                gene = None
+            if feature == 'exon':
+                if tr_id not in reference_annotation:
+                    reference_annotation[tr_id] = {'chromosome': chromosome, 'strand': strand, 'exons': [], 'gene': gene}
+                reference_annotation[tr_id]['exons'].append([int(start), int(end)])
+    ## TAKE ADDITIONAL INFORMATION FROM EXON LISTS
+    for tr_id in reference_annotation:
+        t = reference_annotation[tr_id]
+        t['exons'].sort(key=lambda x: x[0])
+        t['tr_start'] = t['exons'][0][0]
+        t['tr_end'] = t['exons'][len(t['exons'])-1][1]
+        if t['strand'] == '+':
+            t['tss'] = t['tr_start']
+        if t['strand'] == '-':
+            t['tss'] = t['tr_end']
+        t['gene_length'] = t['tr_end'] - t['tr_start']
+    return reference_annotation
+
 class TSSCalling(object):
 
     def __init__(self, **kwargs):
@@ -42,70 +106,6 @@ class TSSCalling(object):
         self.tss_cluster_count = 0
 
         self.execute()
-
-    ## STRAND_STATUS IS USED TO DETERMINE IF STRAND IS USED IN SORT
-    def sortList(self, input_list, strand_status):
-        if strand_status == 'sort_by_strand':
-            return sorted(input_list, key=lambda k: (
-                k['strand'],
-                k['chromosome'],
-                k['start']
-                ))
-        elif strand_status == 'ignore_strand':
-            return sorted(input_list, key=lambda k: (
-                k['chromosome'],
-                k['start']
-                ))
-
-    ## ENTRY 1 IS LESS THAN ENTRY 2?
-    def isLessThan(self, entry_1, entry_2):
-        for val in ['strand', 'chromosome', 'start']:
-            if entry_1[val] < entry_2[val]:
-                return True
-            elif entry_1[val] > entry_2[val]:
-                return False
-        return False
-    ## ENTRY 1 IS WITHIN ENTRY 2?
-    def isWithin(self, entry_1, entry_2):
-        if entry_1['strand'] == entry_2['strand'] and entry_1['chromosome'] == entry_2['chromosome']:
-            if entry_1['start'] >= entry_2['start'] and entry_1['end'] <= entry_2['end']:
-                return True
-        return False
-
-    def getID(self, base_name, count):
-        max_entries = 999999
-        feature_name = base_name + '_'
-        for i in range(len(str(count)), len(str(max_entries))):
-            feature_name += '0'
-        feature_name += str(count)
-        return feature_name
-
-    def readInReferenceAnnotation(self, annotation_file):
-        reference_annotation = dict()
-        with open(annotation_file) as f:
-            for line in f:
-                chromosome, source, feature, start, end, score, strand, frame, attribute = line.strip().split('\t')
-                tr_id = attribute.split('transcript_id')[1].split('\"')[1]
-                if len(attribute.split('gene_id')) > 1:
-                    gene = attribute.split('gene_id')[1].split('\"')[1]
-                else:
-                    gene = None
-                if feature == 'exon':
-                    if tr_id not in reference_annotation:
-                        reference_annotation[tr_id] = {'chromosome': chromosome, 'strand': strand, 'exons': [], 'gene': gene}
-                    reference_annotation[tr_id]['exons'].append([int(start), int(end)])
-        ## TAKE ADDITIONAL INFORMATION FROM EXON LISTS
-        for tr_id in reference_annotation:
-            t = reference_annotation[tr_id]
-            t['exons'].sort(key=lambda x: x[0])
-            t['tr_start'] = t['exons'][0][0]
-            t['tr_end'] = t['exons'][len(t['exons'])-1][1]
-            if t['strand'] == '+':
-                t['tss'] = t['tr_start']
-            if t['strand'] == '-':
-                t['tss'] = t['tr_end']
-            t['gene_length'] = t['tr_end'] - t['tr_start']
-        return reference_annotation
 
     def createSearchWindowsFromAnnotation(self):
         ## VALUE USED TO MERGE SEARCH WINDOWS BY PROXIMITY
@@ -196,7 +196,7 @@ class TSSCalling(object):
         combined_list = []
         readBedGraph(combined_list, forward_bedgraph, '+')
         readBedGraph(combined_list, reverse_bedgraph, '-')
-        return self.sortList(combined_list, 'sort_by_strand')
+        return sortList(combined_list, 'sort_by_strand')
 
     ## CONSIDERS TAB-DELIMITED CHROM_SIZES FILE (UCSC)
     def findGenomeSize(self, chrom_sizes):
@@ -249,14 +249,14 @@ class TSSCalling(object):
         search_index = 0
         bedgraph_index = 0
         while (search_index < len(search_windows)) and (bedgraph_index < len(bedgraph_list)):
-            if self.isWithin(bedgraph_list[bedgraph_index], search_windows[search_index]):
+            if isWithin(bedgraph_list[bedgraph_index], search_windows[search_index]):
                 search_windows[search_index]['hits'].append([
                     bedgraph_list[bedgraph_index]['start'],
                     bedgraph_list[bedgraph_index]['reads']
                     ])
                 bedgraph_index += 1
             else:
-                if self.isLessThan(bedgraph_list[bedgraph_index], search_windows[search_index]):
+                if isLessThan(bedgraph_list[bedgraph_index], search_windows[search_index]):
                     bedgraph_index += 1
                 else:
                     search_index += 1
@@ -285,7 +285,7 @@ class TSSCalling(object):
                     'end': tss['start'] + self.nutss_filter_size
                     })
 
-        return self.sortList(filter_windows, 'sort_by_strand')
+        return sortList(filter_windows, 'sort_by_strand')
 
     def filterByWindowsAndThreshold(self, bedgraph_list, filter_windows, read_threshold):
         ## FILTER BY READ THRESHOLD
@@ -300,10 +300,10 @@ class TSSCalling(object):
             bedgraph_index = 0
             current_entry = []
             while (filter_index < len(filter_windows)) and (bedgraph_index < len(filtered_bedgraph_list)):
-                if self.isWithin(filtered_bedgraph_list[bedgraph_index], filter_windows[filter_index]):
+                if isWithin(filtered_bedgraph_list[bedgraph_index], filter_windows[filter_index]):
                     bedgraph_index += 1
                 else:
-                    if self.isLessThan(filtered_bedgraph_list[bedgraph_index], filter_windows[filter_index]):
+                    if isLessThan(filtered_bedgraph_list[bedgraph_index], filter_windows[filter_index]):
                         current_entry.append(filtered_bedgraph_list[bedgraph_index])
                         bedgraph_index += 1
                     else:
@@ -341,7 +341,7 @@ class TSSCalling(object):
 
     ## SORT CALLED TSSs AND ASSOCIATE INTO BIDIRECTIONAL PAIRS
     def associateBidirectionalTSSs(self):
-        self.tss_list = self.sortList(self.tss_list, 'ignore_strand')
+        self.tss_list = sortList(self.tss_list, 'ignore_strand')
         for i in range(len(self.tss_list)-1):
             if self.tss_list[i]['chromosome'] == self.tss_list[i+1]['chromosome']:
                 if self.tss_list[i]['strand'] == '-' and self.tss_list[i+1]['strand'] == '+':
@@ -379,9 +379,9 @@ class TSSCalling(object):
                         'end': end
                         })
 
-            exons = self.sortList(exons, 'sort_by_strand')
-            introns = self.sortList(introns, 'sort_by_strand')
-            self.tss_list = self.sortList(self.tss_list, 'sort_by_strand')
+            exons = sortList(exons, 'sort_by_strand')
+            introns = sortList(introns, 'sort_by_strand')
+            self.tss_list = sortList(self.tss_list, 'sort_by_strand')
 
         def findFeatureOverlap(tss_list, feature_list, feature_key):
             if feature_list == []:
@@ -391,11 +391,11 @@ class TSSCalling(object):
                 feature_index = 0
                 tss_index = 0
                 while (feature_index < len(feature_list)) and (tss_index < len(tss_list)):
-                    if self.isWithin(tss_list[tss_index], feature_list[feature_index]):
+                    if isWithin(tss_list[tss_index], feature_list[feature_index]):
                         tss_list[tss_index][feature_key] = True
                         tss_index += 1
                     else:
-                        if self.isLessThan(tss_list[tss_index], feature_list[feature_index]):
+                        if isLessThan(tss_list[tss_index], feature_list[feature_index]):
                             tss_list[tss_index][feature_key] = False
                             tss_index += 1
                         else:
@@ -408,16 +408,16 @@ class TSSCalling(object):
     ## ADD TSS CLUSTER AND NUMBER OF TSSs IN ASSOCIATED CLUSTER IN TSS ENTRY
     def associateTSSsIntoClusters(self):
         cluster_count = dict()
-        self.tss_list = self.sortList(self.tss_list, 'ignore_strand')
+        self.tss_list = sortList(self.tss_list, 'ignore_strand')
 
-        current_cluster = self.getID('cluster', self.tss_cluster_count)
+        current_cluster = getID('cluster', self.tss_cluster_count)
         self.tss_cluster_count += 1
         self.tss_list[0]['cluster'] = current_cluster
         cluster_count[current_cluster] = 1
 
         for i in range(1, len(self.tss_list)):
             if not (self.tss_list[i-1]['chromosome'] == self.tss_list[i]['chromosome'] and self.tss_list[i-1]['start'] + self.cluster_threshold >= self.tss_list[i]['start']):
-                current_cluster = self.getID('cluster', self.tss_cluster_count)
+                current_cluster = getID('cluster', self.tss_cluster_count)
                 self.tss_cluster_count += 1
             self.tss_list[i]['cluster'] = current_cluster
             if current_cluster not in cluster_count:
@@ -488,7 +488,7 @@ class TSSCalling(object):
                                 max_position = hit[0]
                 if max_reads >= read_threshold:
                     self.tss_list.append({
-                        'id': self.getID(base_name, count),
+                        'id': getID(base_name, count),
                         'type': tss_type,
                         'start': max_position,
                         'end': max_position,
@@ -539,7 +539,7 @@ class TSSCalling(object):
         read_threshold = self.findReadThreshold(bedgraph_list, genome_size)
 
         if self.annotation_file:
-            self.reference_annotation = self.readInReferenceAnnotation(self.annotation_file)
+            self.reference_annotation = readInReferenceAnnotation(self.annotation_file)
             self.callTSSsFromAnnotation(bedgraph_list, read_threshold)
         self.callUnannotatedTSSs(bedgraph_list, read_threshold)
         self.associateBidirectionalTSSs()
@@ -547,19 +547,20 @@ class TSSCalling(object):
             self.createDetailFile()
         self.writeBedFile(self.tss_list, self.output_bed)
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--fdr', default=None, type=float, help='set read threshold by FDR (FLOAT)')
-parser.add_argument('--false_positives', default=None, type=int, help='set read threshold by false positive count (INTEGER)')
-parser.add_argument('--nutss_filter_size', default=750, type=int, help='set nuTSS filter size; any read within INTEGER of obsTSS/annoTSS is filtered prior to nuTSS calling')
-parser.add_argument('--nutss_search_window', default=250, type=int, help='set nuTSS search window size to INTEGER')
-parser.add_argument('--bidirectional_threshold', default=1000, type=int, help='INTEGER threshold to associate bidirectional TSSs')
-parser.add_argument('--detail_file', default=None, type=str, help='create a tab-delimited TXT file with details about TSS calls')
-parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters')
-parser.add_argument('--annotation_file', '-a', type=str, help='annotation in GTF format')
-parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
-parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
-parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
-parser.add_argument('output_bed', type=str, help='output TSS BED file')
-args = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--fdr', default=None, type=float, help='set read threshold by FDR (FLOAT)')
+    parser.add_argument('--false_positives', default=None, type=int, help='set read threshold by false positive count (INTEGER)')
+    parser.add_argument('--nutss_filter_size', default=750, type=int, help='set nuTSS filter size; any read within INTEGER of obsTSS/annoTSS is filtered prior to nuTSS calling')
+    parser.add_argument('--nutss_search_window', default=250, type=int, help='set nuTSS search window size to INTEGER')
+    parser.add_argument('--bidirectional_threshold', default=1000, type=int, help='INTEGER threshold to associate bidirectional TSSs')
+    parser.add_argument('--detail_file', default=None, type=str, help='create a tab-delimited TXT file with details about TSS calls')
+    parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters')
+    parser.add_argument('--annotation_file', '-a', type=str, help='annotation in GTF format')
+    parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
+    parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
+    parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
+    parser.add_argument('output_bed', type=str, help='output TSS BED file')
+    args = parser.parse_args()
 
-TSSCalling(**vars(args))
+    TSSCalling(**vars(args))
