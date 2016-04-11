@@ -111,7 +111,7 @@ class TSSCalling(object):
         ## VALUE USED TO MERGE SEARCH WINDOWS BY PROXIMITY
         join_window = 200
 
-        temp = sorted(self.reference_annotation, key=lambda k: (
+        current_entry = sorted(self.reference_annotation, key=lambda k: (
             self.reference_annotation[k]['strand'],
             self.reference_annotation[k]['chromosome'],
             self.reference_annotation[k]['tss'],
@@ -123,7 +123,7 @@ class TSSCalling(object):
         ## ADD SEARCH WINDOW EDGES TO ENTRIES
         transcript_list = []
 
-        for transcript in temp:
+        for transcript in current_entry:
             transcript_list.append({
                 'transcript_ids': [transcript],
                 'chromosome': self.reference_annotation[transcript]['chromosome'],
@@ -330,17 +330,17 @@ class TSSCalling(object):
         if filter_windows != []:
             filter_index = 0
             bedgraph_index = 0
-            temp = []
+            current_entry = []
             while (filter_index < len(filter_windows)) and (bedgraph_index < len(filtered_bedgraph_list)):
                 if self.isWithin(filtered_bedgraph_list[bedgraph_index], filter_windows[filter_index]):
                     bedgraph_index += 1
                 else:
                     if self.isLessThan(filtered_bedgraph_list[bedgraph_index], filter_windows[filter_index]):
-                        temp.append(filtered_bedgraph_list[bedgraph_index])
+                        current_entry.append(filtered_bedgraph_list[bedgraph_index])
                         bedgraph_index += 1
                     else:
                         filter_index += 1
-            filtered_bedgraph_list = temp
+            filtered_bedgraph_list = current_entry
         return filtered_bedgraph_list
 
     ## CREATES WINDOWS FOR UNANNOTATED TSS CALLING
@@ -376,21 +376,21 @@ class TSSCalling(object):
     ## A SEARCH WINDOW LENGTH OF EACH OTHER
     def callUnannotatedTSSsFromIntersection(self, intersection):
         for entry in intersection:
-            temp = entry
+            current_entry = entry
 
-            while len(temp['hits']) != 0:
+            while len(current_entry['hits']) != 0:
                 max_reads = float('-inf')
                 max_position = None
 
-                for hit in temp['hits']:
+                for hit in current_entry['hits']:
                     if hit[1] > max_reads:
                         max_position = hit[0]
                         max_reads = hit[1]
                     elif hit[1] == max_reads:
-                        if temp['strand'] == '+':
+                        if current_entry['strand'] == '+':
                             if hit[0] < max_position:
                                 max_position = hit[0]
-                        elif temp['strand'] == '-':
+                        elif current_entry['strand'] == '-':
                             if hit[0] > max_position:
                                 max_position = hit[0]
 
@@ -405,9 +405,9 @@ class TSSCalling(object):
                     })
                 self.unannotated_tss_count += 1
 
-                for hit in temp['hits']:
+                for hit in current_entry['hits']:
                     if abs(hit[0] - max_position) <= self.nutss_search_window:
-                        temp['hits'].remove(hit)
+                        current_entry['hits'].remove(hit)
 
     ## SORT CALLED TSSs AND ASSOCIATE INTO BIDIRECTIONAL PAIRS
     def associateBidirectionalTSSs(self):
@@ -536,50 +536,63 @@ class TSSCalling(object):
 
     def callTSSsFromIntersection(self, intersection, read_threshold, base_name, count, tss_type, nearest_allowed):
         for entry in intersection:
-            temp = entry
-            while len(temp['hits'] != 0):
+            current_entry = entry
+            while len(current_entry['hits']) != 0:
+                print('Start while loop')
+                print(current_entry['hits'])
                 max_reads = float('-inf')
                 max_position = None
-                for hit in temp['hits']:
+                for hit in current_entry['hits']:
                     if hit[1] > max_reads:
                         max_position = hit[0]
                         max_reads = hit[1]
                     elif hit[1] == max_reads:
-                        if temp['strand'] == '+':
+                        if current_entry['strand'] == '+':
                             if hit[0] < max_position:
                                 max_position = hit[0]
-                        elif temp['strand'] == '-':
+                        elif current_entry['strand'] == '-':
                             if hit[0] > max_position:
                                 max_position = hit[0]
                 if max_reads >= read_threshold:
+                    print('Called: ' + str(max_position))
                     self.tss_list.append({
                         'id': self.getID(base_name, count),
                         'type': tss_type,
                         'start': max_position,
                         'end': max_position,
                         'reads': max_reads,
-                        'transcript_ids': entry['transcript_ids'],
-                        'genes': entry['genes'],
-                        'strand': entry['strand'],
-                        'chromosome': entry['chromosome']
+                        #'transcript_ids': entry['transcript_ids'],
+                        #'genes': entry['genes'],
+                        #'strand': entry['strand'],
+                        #'chromosome': entry['chromosome']
                         })
+                    for val in ['transcript_ids', 'genes', 'strand', 'chromosome']:
+                        if val in entry:
+                            self.tss_list[-1][val] = entry[val]
                     count += 1
-                for hit in temp['hits']:
-                    if abs(hit[0] - max_position) <= nearest_allowed:
-                        temp['hits'].remove(hit)
+                temp = []
+                print('Go through hits')
+                for hit in current_entry['hits']:
+                    print(hit)
+                    if abs(hit[0] - max_position) > nearest_allowed:
+                        print('Retained: ' + str(hit[0]))
+                        temp.append(hit)
+                current_entry['hits'] = temp
         return count
 
     def callTSSsFromAnnotation(self, bedgraph_list, read_threshold):
         ref_search_windows = self.createSearchWindowsFromAnnotation()
         self.findIntersectionWithBedGraph(ref_search_windows, bedgraph_list)
-        self.callAnnotatedTSSsFromIntersection(ref_search_windows, read_threshold)
+        #self.callAnnotatedTSSsFromIntersection(ref_search_windows, read_threshold)
+        self.annotated_tss_count = self.callTSSsFromIntersection(ref_search_windows, read_threshold, 'obsTSS', self.annotated_tss_count, 'from annotation', float('inf'))
 
     def callUnannotatedTSSs(self, bedgraph_list, read_threshold):
         filter_windows = self.createFilterWindowsFromAnnotationAndCalledTSSs()
         filtered_bedgraph = self.filterByWindowsAndThreshold(bedgraph_list, filter_windows, read_threshold)
         unannotated_search_windows = self.createUnannotatedSearchWindowsFromBedgraph(filtered_bedgraph)
         self.findIntersectionWithBedGraph(unannotated_search_windows, filtered_bedgraph)
-        self.callUnannotatedTSSsFromIntersection(unannotated_search_windows)
+        #self.callUnannotatedTSSsFromIntersection(unannotated_search_windows)
+        self.unannotated_tss_count = self.callTSSsFromIntersection(unannotated_search_windows, read_threshold, 'nuTSS', self.unannotated_tss_count, 'unannotated', self.nutss_search_window)
 
     def execute(self):
         bedgraph_list = self.combineAndSortBedGraphs(self.forward_bedgraph, self.reverse_bedgraph)
