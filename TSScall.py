@@ -468,12 +468,8 @@ class TSSCalling(object):
     ## FROM HITS IN SEARCH WINDOWS, CALL TSSs
     ## COUNT IS RETURNED IN ORDER TO UPDATE INSTANCE VARIABLES
     def callTSSsFromIntersection(self, intersection, read_threshold, base_name, count, tss_type, nearest_allowed):
-        ## ITERATE THROUGH WINDOWS IN INTERSECTION
-        for entry in intersection:
-            current_entry = entry
-            ## LOOP WHILE 'HITS' IS POPULATED
-            while len(current_entry['hits']) != 0:
-                ## CALL A TSS
+        def callTSS(hits):
+            if self.call_method == 'global':
                 max_reads = float('-inf')
                 max_position = None
                 for hit in current_entry['hits']:
@@ -487,13 +483,21 @@ class TSSCalling(object):
                         elif current_entry['strand'] == '-':
                             if hit[0] > max_position:
                                 max_position = hit[0]
-                if max_reads >= read_threshold:
+                return max_position, max_reads
+        ## ITERATE THROUGH WINDOWS IN INTERSECTION
+        for entry in intersection:
+            current_entry = entry
+            ## LOOP WHILE 'HITS' IS POPULATED
+            while len(current_entry['hits']) != 0:
+                ## CALL A TSS
+                tss_position, tss_reads = callTSS(current_entry['hits'])
+                if tss_reads >= read_threshold:
                     self.tss_list.append({
                         'id': getID(base_name, count),
                         'type': tss_type,
-                        'start': max_position,
-                        'end': max_position,
-                        'reads': max_reads,
+                        'start': tss_position,
+                        'end': tss_position,
+                        'reads': tss_reads,
                         })
                     ## IF VAL IN ENTRY, ADD TO DICT IN TSS LIST
                     for val in ['transcript_ids', 'genes', 'strand', 'chromosome']:
@@ -503,7 +507,7 @@ class TSSCalling(object):
                 ## GO THROUGH HITS, KEEP THOSE WITHIN NEAREST_ALLOWED
                 temp = []
                 for hit in current_entry['hits']:
-                    if abs(hit[0] - max_position) > nearest_allowed:
+                    if abs(hit[0] - tss_position) > nearest_allowed:
                         temp.append(hit)
                 current_entry['hits'] = temp
         return count
