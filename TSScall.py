@@ -99,6 +99,7 @@ class TSSCalling(object):
         self.cluster_threshold = kwargs['cluster_threshold']
         self.detail_file = kwargs['detail_file']
         self.call_method = kwargs['call_method']
+        self.annotation_join_distance = kwargs['annotation_join_distance']
 
         self.tss_list = []
         self.reference_annotation = None
@@ -110,7 +111,7 @@ class TSSCalling(object):
 
     def createSearchWindowsFromAnnotation(self):
         ## VALUE USED TO MERGE SEARCH WINDOWS BY PROXIMITY
-        join_window = 200
+        join_window = self.annotation_join_distance
 
         current_entry = sorted(self.reference_annotation, key=lambda k: (
             self.reference_annotation[k]['strand'],
@@ -595,6 +596,7 @@ if __name__ == '__main__':
     parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters')
     parser.add_argument('--annotation_file', '-a', type=str, help='annotation in GTF format')
     parser.add_argument('--call_method', type=str, default='global', choices=['global', 'bin_winner'], help='TSS calling method to use (Default: global)')
+    parser.add_argument('--annotation_join_distance', type=int, default=200, help='set distace threshold for joining search windows from annotation')
     parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
     parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
     parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
