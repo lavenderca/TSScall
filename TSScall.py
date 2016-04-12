@@ -9,7 +9,7 @@ import sys
 import os
 import math
 import argparse
-import operator
+from operator import itemgetter
 
 ## STRAND_STATUS IS USED TO DETERMINE IF STRAND IS USED IN SORT
 def sortList(input_list, strand_status):
@@ -98,6 +98,7 @@ class TSSCalling(object):
         self.bidirectional_threshold = kwargs['bidirectional_threshold']
         self.cluster_threshold = kwargs['cluster_threshold']
         self.detail_file = kwargs['detail_file']
+        self.call_method = kwargs['call_method']
 
         self.tss_list = []
         self.reference_annotation = None
@@ -467,12 +468,8 @@ class TSSCalling(object):
     ## FROM HITS IN SEARCH WINDOWS, CALL TSSs
     ## COUNT IS RETURNED IN ORDER TO UPDATE INSTANCE VARIABLES
     def callTSSsFromIntersection(self, intersection, read_threshold, base_name, count, tss_type, nearest_allowed):
-        ## ITERATE THROUGH WINDOWS IN INTERSECTION
-        for entry in intersection:
-            current_entry = entry
-            ## LOOP WHILE 'HITS' IS POPULATED
-            while len(current_entry['hits']) != 0:
-                ## CALL A TSS
+        def callTSS(hits):
+            if self.call_method == 'global':
                 max_reads = float('-inf')
                 max_position = None
                 for hit in current_entry['hits']:
@@ -486,13 +483,53 @@ class TSSCalling(object):
                         elif current_entry['strand'] == '-':
                             if hit[0] > max_position:
                                 max_position = hit[0]
-                if max_reads >= read_threshold:
+                return max_position, max_reads
+            if self.call_method == 'bin_winner':
+                bin_size = 200
+                bins = []
+                ## MAKE BINS
+                hits.sort(key=itemgetter(0))
+                for i in range(len(hits)):
+                    bins.append({
+                        'total_reads': 0,
+                        'bin_hits': []
+                        })
+                    for j in range(i, len(hits)):
+                        if abs(hits[i][0] - hits[j][0]) <= bin_size:
+                            bins[-1]['total_reads'] += hits[j][1]
+                            bins[-1]['bin_hits'].append(hits[j])
+                ## SELECT BIN WITH HIGHEST TOTAL READS
+                ## BECAUSE SORTED, WILL TAKE UPSTREAM BIN IN TIES
+                max_bin_reads = float('-inf')
+                max_bin_index = None
+                for i, entry in enumerate(bins):
+                    if entry['total_reads'] > max_bin_reads:
+                        max_bin_index = i
+                        max_bin_reads = entry['total_reads']
+                ## GET LOCAL WINNER
+                ## BECAUSE SORTED, WILL TAKE UPSTREAM TSS IN TIES
+                max_reads = float('-inf')
+                max_position = None
+                for hit in bins[max_bin_index]['bin_hits']:
+                    if hit[1] > max_reads:
+                        max_position = hit[0]
+                        max_reads = hit[1]
+                return max_position, max_reads
+
+        ## ITERATE THROUGH WINDOWS IN INTERSECTION
+        for entry in intersection:
+            current_entry = entry
+            ## LOOP WHILE 'HITS' IS POPULATED
+            while len(current_entry['hits']) != 0:
+                ## CALL A TSS
+                tss_position, tss_reads = callTSS(current_entry['hits'])
+                if tss_reads >= read_threshold:
                     self.tss_list.append({
                         'id': getID(base_name, count),
                         'type': tss_type,
-                        'start': max_position,
-                        'end': max_position,
-                        'reads': max_reads,
+                        'start': tss_position,
+                        'end': tss_position,
+                        'reads': tss_reads,
                         })
                     ## IF VAL IN ENTRY, ADD TO DICT IN TSS LIST
                     for val in ['transcript_ids', 'genes', 'strand', 'chromosome']:
@@ -502,7 +539,7 @@ class TSSCalling(object):
                 ## GO THROUGH HITS, KEEP THOSE WITHIN NEAREST_ALLOWED
                 temp = []
                 for hit in current_entry['hits']:
-                    if abs(hit[0] - max_position) > nearest_allowed:
+                    if abs(hit[0] - tss_position) > nearest_allowed:
                         temp.append(hit)
                 current_entry['hits'] = temp
         return count
@@ -557,6 +594,7 @@ if __name__ == '__main__':
     parser.add_argument('--detail_file', default=None, type=str, help='create a tab-delimited TXT file with details about TSS calls')
     parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters')
     parser.add_argument('--annotation_file', '-a', type=str, help='annotation in GTF format')
+    parser.add_argument('--call_method', type=str, default='global', choices=['global', 'bin_winner'], help='TSS calling method to use (Default: global)')
     parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
     parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
     parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
