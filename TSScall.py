@@ -9,7 +9,7 @@ import sys
 import os
 import math
 import argparse
-import operator
+from operator import itemgetter
 
 ## STRAND_STATUS IS USED TO DETERMINE IF STRAND IS USED IN SORT
 def sortList(input_list, strand_status):
@@ -484,6 +484,38 @@ class TSSCalling(object):
                             if hit[0] > max_position:
                                 max_position = hit[0]
                 return max_position, max_reads
+            if self.call_method == 'bin_winner':
+                bin_size = 200
+                bins = []
+                ## MAKE BINS
+                hits.sort(key=itemgetter(0))
+                for i in range(len(hits)):
+                    bins.append({
+                        'total_reads': 0,
+                        'bin_hits': []
+                        })
+                    for j in range(i, len(hits)):
+                        if abs(hits[i][0] - hits[j][0]) <= bin_size:
+                            bins[-1]['total_reads'] += hits[j][1]
+                            bins[-1]['bin_hits'].append(hits[j])
+                ## SELECT BIN WITH HIGHEST TOTAL READS
+                ## BECAUSE SORTED, WILL TAKE UPSTREAM BIN IN TIES
+                max_bin_reads = float('-inf')
+                max_bin_index = None
+                for i, entry in enumerate(bins):
+                    if entry['total_reads'] > max_bin_reads:
+                        max_bin_index = i
+                        max_bin_reads = entry['total_reads']
+                ## GET LOCAL WINNER
+                ## BECAUSE SORTED, WILL TAKE UPSTREAM TSS IN TIES
+                max_reads = float('-inf')
+                max_position = None
+                for hit in bins[max_bin_index]['bin_hits']:
+                    if hit[1] > max_reads:
+                        max_position = hit[0]
+                        max_reads = hit[1]
+                return max_position, max_reads
+
         ## ITERATE THROUGH WINDOWS IN INTERSECTION
         for entry in intersection:
             current_entry = entry
