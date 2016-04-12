@@ -98,6 +98,7 @@ class TSSCalling(object):
         self.bidirectional_threshold = kwargs['bidirectional_threshold']
         self.cluster_threshold = kwargs['cluster_threshold']
         self.detail_file = kwargs['detail_file']
+        self.call_method = kwargs['call_method']
 
         self.tss_list = []
         self.reference_annotation = None
@@ -557,6 +558,7 @@ if __name__ == '__main__':
     parser.add_argument('--detail_file', default=None, type=str, help='create a tab-delimited TXT file with details about TSS calls')
     parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters')
     parser.add_argument('--annotation_file', '-a', type=str, help='annotation in GTF format')
+    parser.add_argument('--call_method', type=str, default='global', help='call method to use (global, bin_winner)')
     parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
     parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
     parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
