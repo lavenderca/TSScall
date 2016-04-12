@@ -100,6 +100,7 @@ class TSSCalling(object):
         self.detail_file = kwargs['detail_file']
         self.call_method = kwargs['call_method']
         self.annotation_join_distance = kwargs['annotation_join_distance']
+        self.annotation_search_window = kwargs['annotation_search_window']
 
         self.tss_list = []
         self.reference_annotation = None
@@ -112,6 +113,7 @@ class TSSCalling(object):
     def createSearchWindowsFromAnnotation(self):
         ## VALUE USED TO MERGE SEARCH WINDOWS BY PROXIMITY
         join_window = self.annotation_join_distance
+        window_size = self.annotation_search_window
 
         current_entry = sorted(self.reference_annotation, key=lambda k: (
             self.reference_annotation[k]['strand'],
@@ -135,21 +137,21 @@ class TSSCalling(object):
                 'hits': []
             })
             if self.reference_annotation[transcript]['strand'] == '+':
-                transcript_list[-1]['start'] = transcript_list[-1]['tss'] - 1000
+                transcript_list[-1]['start'] = transcript_list[-1]['tss'] - window_size
                 ## MAKE SURE WINDOW END DOES NOT GO PAST TRANSCRIPT END
-                end = transcript_list[-1]['tss'] + 999
+                end = transcript_list[-1]['tss'] + window_size
                 if end > self.reference_annotation[transcript]['tr_end']:
                     transcript_list[-1]['end'] = self.reference_annotation[transcript]['tr_end']
                 else:
                     transcript_list[-1]['end'] = end
             elif self.reference_annotation[transcript]['strand'] == '-':
                 ## MAKE SURE WINDOW START DOES NOT GO PAST TRANSCRIPT START
-                start = transcript_list[-1]['tss'] - 999
+                start = transcript_list[-1]['tss'] - window_size
                 if start < self.reference_annotation[transcript]['tr_start']:
                     transcript_list[-1]['start'] = self.reference_annotation[transcript]['tr_end']
                 else:
                     transcript_list[-1]['start'] = start
-                transcript_list[-1]['end'] = transcript_list[-1]['tss'] + 1000
+                transcript_list[-1]['end'] = transcript_list[-1]['tss'] + window_size
 
         merged_windows = []
 
@@ -596,7 +598,8 @@ if __name__ == '__main__':
     parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters')
     parser.add_argument('--annotation_file', '-a', type=str, help='annotation in GTF format')
     parser.add_argument('--call_method', type=str, default='global', choices=['global', 'bin_winner'], help='TSS calling method to use (Default: global)')
-    parser.add_argument('--annotation_join_distance', type=int, default=200, help='set distace threshold for joining search windows from annotation')
+    parser.add_argument('--annotation_join_distance', type=int, default=200, help='set INTEGER distace threshold for joining search windows from annotation')
+    parser.add_argument('--annotation_search_window', type=int, default=1000, help='set annotation search window size to INTEGER')
     parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
     parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
     parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
