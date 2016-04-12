@@ -101,6 +101,7 @@ class TSSCalling(object):
         self.call_method = kwargs['call_method']
         self.annotation_join_distance = kwargs['annotation_join_distance']
         self.annotation_search_window = kwargs['annotation_search_window']
+        self.bin_winner_size = kwargs['bin_winner_size']
 
         self.set_read_threshold = kwargs['set_read_threshold']
         try:
@@ -506,7 +507,7 @@ class TSSCalling(object):
                                 max_position = hit[0]
                 return max_position, max_reads
             if self.call_method == 'bin_winner':
-                bin_size = 200
+                bin_size = self.bin_winner_size
                 bins = []
                 ## MAKE BINS
                 hits.sort(key=itemgetter(0))
@@ -595,7 +596,6 @@ class TSSCalling(object):
         bedgraph_list = self.combineAndSortBedGraphs(self.forward_bedgraph, self.reverse_bedgraph)
         genome_size = self.findGenomeSize(self.chrom_sizes)
         read_threshold = self.findReadThreshold(bedgraph_list, genome_size)
-        print(read_threshold)
 
         if self.annotation_file:
             self.reference_annotation = readInReferenceAnnotation(self.annotation_file)
@@ -620,6 +620,7 @@ if __name__ == '__main__':
     parser.add_argument('--annotation_join_distance', type=int, default=200, help='set INTEGER distace threshold for joining search windows from annotation')
     parser.add_argument('--annotation_search_window', type=int, default=1000, help='set annotation search window size to INTEGER')
     parser.add_argument('--set_read_threshold', type=float, default=None, help='set read threshold for TSS calling to FLOAT; do not determine threshold from data')
+    parser.add_argument('--bin_winner_size', type=int, default=200, help='set bin size for call method bin_winner')
     parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
     parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
     parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
