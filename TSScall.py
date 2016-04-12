@@ -99,6 +99,27 @@ class TSSCalling(object):
         self.cluster_threshold = kwargs['cluster_threshold']
         self.detail_file = kwargs['detail_file']
         self.call_method = kwargs['call_method']
+        self.annotation_join_distance = kwargs['annotation_join_distance']
+        self.annotation_search_window = kwargs['annotation_search_window']
+        self.bin_winner_size = kwargs['bin_winner_size']
+
+        self.set_read_threshold = kwargs['set_read_threshold']
+        try:
+            int(self.set_read_threshold)
+        except:
+            pass
+        else:
+            self.set_read_threshold = int(self.set_read_threshold)
+
+        implied_threshold_methods = 0
+        for val in [self.fdr_threshold, self.false_positives, self.set_read_threshold]:
+            implied_threshold_methods += int(bool(val))
+        if implied_threshold_methods == 1:
+            pass
+        elif implied_threshold_methods > 1:
+            raise ValueError('More than 1 read threshold method implied!!')
+        elif implied_threshold_methods == 0:
+            self.false_positives = 1
 
         self.tss_list = []
         self.reference_annotation = None
@@ -110,7 +131,8 @@ class TSSCalling(object):
 
     def createSearchWindowsFromAnnotation(self):
         ## VALUE USED TO MERGE SEARCH WINDOWS BY PROXIMITY
-        join_window = 200
+        join_window = self.annotation_join_distance
+        window_size = self.annotation_search_window
 
         current_entry = sorted(self.reference_annotation, key=lambda k: (
             self.reference_annotation[k]['strand'],
@@ -134,21 +156,21 @@ class TSSCalling(object):
                 'hits': []
             })
             if self.reference_annotation[transcript]['strand'] == '+':
-                transcript_list[-1]['start'] = transcript_list[-1]['tss'] - 1000
+                transcript_list[-1]['start'] = transcript_list[-1]['tss'] - window_size
                 ## MAKE SURE WINDOW END DOES NOT GO PAST TRANSCRIPT END
-                end = transcript_list[-1]['tss'] + 999
+                end = transcript_list[-1]['tss'] + window_size
                 if end > self.reference_annotation[transcript]['tr_end']:
                     transcript_list[-1]['end'] = self.reference_annotation[transcript]['tr_end']
                 else:
                     transcript_list[-1]['end'] = end
             elif self.reference_annotation[transcript]['strand'] == '-':
                 ## MAKE SURE WINDOW START DOES NOT GO PAST TRANSCRIPT START
-                start = transcript_list[-1]['tss'] - 999
+                start = transcript_list[-1]['tss'] - window_size
                 if start < self.reference_annotation[transcript]['tr_start']:
                     transcript_list[-1]['start'] = self.reference_annotation[transcript]['tr_end']
                 else:
                     transcript_list[-1]['start'] = start
-                transcript_list[-1]['end'] = transcript_list[-1]['tss'] + 1000
+                transcript_list[-1]['end'] = transcript_list[-1]['tss'] + window_size
 
         merged_windows = []
 
@@ -218,31 +240,31 @@ class TSSCalling(object):
                     loci += 1
             return loci
 
-        ## IF FDR OR EXPECTED FALSE POSITIVES IS NOT SET, DEFAULT TO 1 EXPECTED FALSE POSITIVE
-        if self.fdr_threshold is None and self.false_positives is None:
+        if self.fdr_threshold or self.false_positives:
             self.false_positives = 1
-        mappable_size = 0.8 * 2 * float(genome_size)
+            mappable_size = 0.8 * 2 * float(genome_size)
+            read_count = 0
+            for entry in bedgraph_list:
+                read_count += entry['reads']
+            expected_count = float(read_count)/mappable_size
 
-        read_count = 0
-        for entry in bedgraph_list:
-            read_count += entry['reads']
-        expected_count = float(read_count)/mappable_size
-
-        cume_probability = ((expected_count**0)/math.factorial(0))*math.exp(-expected_count)
-        threshold = 1
-        while True:
-            probability = 1 - cume_probability
-            expected_loci = probability * mappable_size
-            if self.fdr_threshold:
-                observed_loci = countLoci(bedgraph_list, threshold)
-                fdr = float(expected_loci)/float(observed_loci)
-                if fdr < fdr_threshold:
-                    return threshold
-            else:
-                if expected_loci < self.false_positives:
-                    return threshold
-            cume_probability += ((expected_count**threshold)/math.factorial(threshold))*math.exp(-expected_count)
-            threshold += 1
+            cume_probability = ((expected_count**0)/math.factorial(0))*math.exp(-expected_count)
+            threshold = 1
+            while True:
+                probability = 1 - cume_probability
+                expected_loci = probability * mappable_size
+                if self.fdr_threshold:
+                    observed_loci = countLoci(bedgraph_list, threshold)
+                    fdr = float(expected_loci)/float(observed_loci)
+                    if fdr < fdr_threshold:
+                        return threshold
+                else:
+                    if expected_loci < self.false_positives:
+                        return threshold
+                cume_probability += ((expected_count**threshold)/math.factorial(threshold))*math.exp(-expected_count)
+                threshold += 1
+        else:
+            return self.set_read_threshold
 
     ## FIND INTERSECTION WITH SEARCH_WINDOWS, BEDGRAPH_LIST;
     ## HITS ARE ADDED TO WINDOW_LIST, REQUIRES SORTED LIST
@@ -485,7 +507,7 @@ class TSSCalling(object):
                                 max_position = hit[0]
                 return max_position, max_reads
             if self.call_method == 'bin_winner':
-                bin_size = 200
+                bin_size = self.bin_winner_size
                 bins = []
                 ## MAKE BINS
                 hits.sort(key=itemgetter(0))
@@ -595,6 +617,10 @@ if __name__ == '__main__':
     parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters')
     parser.add_argument('--annotation_file', '-a', type=str, help='annotation in GTF format')
     parser.add_argument('--call_method', type=str, default='global', choices=['global', 'bin_winner'], help='TSS calling method to use (Default: global)')
+    parser.add_argument('--annotation_join_distance', type=int, default=200, help='set INTEGER distace threshold for joining search windows from annotation')
+    parser.add_argument('--annotation_search_window', type=int, default=1000, help='set annotation search window size to INTEGER')
+    parser.add_argument('--set_read_threshold', type=float, default=None, help='set read threshold for TSS calling to FLOAT; do not determine threshold from data')
+    parser.add_argument('--bin_winner_size', type=int, default=200, help='set bin size for call method bin_winner')
     parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
     parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
     parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
