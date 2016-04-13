@@ -310,41 +310,36 @@ class TSSCalling(object):
 
         return sortList(filter_windows, 'sort_by_strand')
 
-    def filterByWindowsAndThreshold(self, bedgraph_list, filter_windows, read_threshold):
-        ## FILTER BY READ THRESHOLD
-        filtered_bedgraph_list = []
-        for entry in bedgraph_list:
-            if entry['reads'] > read_threshold:
-                filtered_bedgraph_list.append(entry)
-
+    def filterBedGraphListByWindows(self, bedgraph_list, filter_windows):
         ## FILTER BY OVERLAP WITH FILTER WINDOWS
         if filter_windows != []:
             filter_index = 0
             bedgraph_index = 0
-            current_entry = []
-            while (filter_index < len(filter_windows)) and (bedgraph_index < len(filtered_bedgraph_list)):
-                if isWithin(filtered_bedgraph_list[bedgraph_index], filter_windows[filter_index]):
+            working_list = []
+            while (filter_index < len(filter_windows)) and (bedgraph_index < len(bedgraph_list)):
+                if isWithin(bedgraph_list[bedgraph_index], filter_windows[filter_index]):
                     bedgraph_index += 1
                 else:
-                    if isLessThan(filtered_bedgraph_list[bedgraph_index], filter_windows[filter_index]):
-                        current_entry.append(filtered_bedgraph_list[bedgraph_index])
+                    if isLessThan(bedgraph_list[bedgraph_index], filter_windows[filter_index]):
+                        working_list.append(bedgraph_list[bedgraph_index])
                         bedgraph_index += 1
                     else:
                         filter_index += 1
-            filtered_bedgraph_list = current_entry
-        return filtered_bedgraph_list
+            bedgraph_list = working_list
+        return bedgraph_list
 
     ## CREATES WINDOWS FOR UNANNOTATED TSS CALLING
-    def createUnannotatedSearchWindowsFromBedgraph(self, bedgraph_list):
+    def createUnannotatedSearchWindowsFromBedgraph(self, bedgraph_list, read_threshold):
         windows = []
         for entry in bedgraph_list:
-            windows.append({
-                'strand': entry['strand'],
-                'chromosome': entry['chromosome'],
-                'start': entry['start'] - self.nutss_search_window,
-                'end': entry['end'] + self.nutss_search_window,
-                'hits': []
-                })
+            if entry['reads'] > read_threshold:
+                windows.append({
+                    'strand': entry['strand'],
+                    'chromosome': entry['chromosome'],
+                    'start': entry['start'] - self.nutss_search_window,
+                    'end': entry['end'] + self.nutss_search_window,
+                    'hits': []
+                    })
 
         ## MERGE OVERLAPPING WINDOWS
         merged_windows = []
@@ -580,8 +575,8 @@ class TSSCalling(object):
 
     def callUnannotatedTSSs(self, bedgraph_list, read_threshold):
         filter_windows = self.createFilterWindowsFromAnnotationAndCalledTSSs()
-        filtered_bedgraph = self.filterByWindowsAndThreshold(bedgraph_list, filter_windows, read_threshold)
-        unannotated_search_windows = self.createUnannotatedSearchWindowsFromBedgraph(filtered_bedgraph)
+        filtered_bedgraph = self.filterBedGraphListByWindows(bedgraph_list, filter_windows)
+        unannotated_search_windows = self.createUnannotatedSearchWindowsFromBedgraph(filtered_bedgraph, read_threshold)
         self.findIntersectionWithBedGraph(unannotated_search_windows, filtered_bedgraph)
         self.unannotated_tss_count = self.callTSSsFromIntersection(
             unannotated_search_windows,
@@ -609,18 +604,18 @@ class TSSCalling(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--fdr', default=None, type=float, help='set read threshold by FDR (FLOAT)')
-    parser.add_argument('--false_positives', default=None, type=int, help='set read threshold by false positive count (INTEGER)')
-    parser.add_argument('--nutss_filter_size', default=750, type=int, help='set nuTSS filter size; any read within INTEGER of obsTSS/annoTSS is filtered prior to nuTSS calling')
-    parser.add_argument('--nutss_search_window', default=250, type=int, help='set nuTSS search window size to INTEGER')
-    parser.add_argument('--bidirectional_threshold', default=1000, type=int, help='INTEGER threshold to associate bidirectional TSSs')
+    parser.add_argument('--false_positives', default=None, type=int, help='set read threshold by false positive count (INTEGER) (Default method: less than 1 false positive)')
+    parser.add_argument('--nutss_filter_size', default=750, type=int, help='set nuTSS filter size; any read within INTEGER of obsTSS/annoTSS is filtered prior to nuTSS calling (Default: 750)')
+    parser.add_argument('--nutss_search_window', default=250, type=int, help='set nuTSS search window size to INTEGER (Default: 250)')
+    parser.add_argument('--bidirectional_threshold', default=1000, type=int, help='INTEGER threshold to associate bidirectional TSSs (Default: 1000)')
     parser.add_argument('--detail_file', default=None, type=str, help='create a tab-delimited TXT file with details about TSS calls')
-    parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters')
+    parser.add_argument('--cluster_threshold', default=1000, type=int, help='INTEGER threshold to associate TSSs into clusters (Default: 1000)')
     parser.add_argument('--annotation_file', '-a', type=str, help='annotation in GTF format')
-    parser.add_argument('--call_method', type=str, default='global', choices=['global', 'bin_winner'], help='TSS calling method to use (Default: global)')
-    parser.add_argument('--annotation_join_distance', type=int, default=200, help='set INTEGER distace threshold for joining search windows from annotation')
-    parser.add_argument('--annotation_search_window', type=int, default=1000, help='set annotation search window size to INTEGER')
+    parser.add_argument('--call_method', type=str, default='bin_winner', choices=['global', 'bin_winner'], help='TSS calling method to use (Default: bin_winner)')
+    parser.add_argument('--annotation_join_distance', type=int, default=200, help='set INTEGER distace threshold for joining search windows from annotation (Default: 200)')
+    parser.add_argument('--annotation_search_window', type=int, default=1000, help='set annotation search window size to INTEGER (Default: 1000)')
     parser.add_argument('--set_read_threshold', type=float, default=None, help='set read threshold for TSS calling to FLOAT; do not determine threshold from data')
-    parser.add_argument('--bin_winner_size', type=int, default=200, help='set bin size for call method bin_winner')
+    parser.add_argument('--bin_winner_size', type=int, default=200, help='set bin size for call method bin_winner (Default: 200)')
     parser.add_argument('forward_bedgraph', type=str, help='forward strand Start-seq bedgraph file')
     parser.add_argument('reverse_bedgraph', type=str, help='reverse strand Start-seq bedgraph file')
     parser.add_argument('chrom_sizes', type=str, help='standard tab-delimited chromosome sizes file')
