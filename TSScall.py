@@ -8,6 +8,7 @@
 import os
 import math
 import argparse
+import sys
 from operator import itemgetter
 
 
@@ -554,7 +555,7 @@ class TSSCalling(object):
     def writeBedFile(self, tss_list, output_bed):
         with open(output_bed, 'w') as OUTPUT:
             for tss in tss_list:
-                OUTPUT.write("{}\t{}\t{}\t{}\t{}\t{}\n".format(
+                OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                     tss['chromosome'],
                     str(tss['start'] - 1),
                     str(tss['start']),
@@ -675,20 +676,35 @@ class TSSCalling(object):
             )
 
     def execute(self):
+        sys.stdout.write('Reading in bedGraph files...\n')
         bedgraph_list = self.combineAndSortBedGraphs(self.forward_bedgraph,
                                                      self.reverse_bedgraph)
         genome_size = self.findGenomeSize(self.chrom_sizes)
+        sys.stdout.write('Calculating read threshold...\n')
         read_threshold = self.findReadThreshold(bedgraph_list, genome_size)
+        sys.stdout.write('Read threshold set to {}\n'.format(
+            str(read_threshold)))
 
         if self.annotation_file:
+            sys.stdout.write('Reading in annotation file...\n')
             self.reference_annotation =\
                 readInReferenceAnnotation(self.annotation_file)
+            sys.stdout.write('Calling TSSs from annotation...\n')
             self.callTSSsFromAnnotation(bedgraph_list, read_threshold)
+            sys.stdout.write('{} TSSs called from annotation\n'.format(
+                str(self.annotated_tss_count)))
+        sys.stdout.write('Calling unannotated TSSs...\n')
         self.callUnannotatedTSSs(bedgraph_list, read_threshold)
+        sys.stdout.write('{} unannotated TSSs called\n'.format(
+            str(self.unannotated_tss_count)))
+        sys.stdout.write('Associating bidirectional TSSs...\n')
         self.associateBidirectionalTSSs()
         if self.detail_file:
+            sys.stdout.write('Creating detail file...\n')
             self.createDetailFile()
+        sys.stdout.write('Creating output bed...\n')
         self.writeBedFile(self.tss_list, self.output_bed)
+        sys.stdout.write('TSS calling complete\n')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
