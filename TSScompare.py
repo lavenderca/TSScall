@@ -65,7 +65,6 @@ def compareTo(fn_1, fn_2, list_1, list_2, missing_fn):
             if isWithin(list_1[list_1_index], list_2[list_2_index]):
                 shared += 1
                 list_1_index += 1
-                list_2_index += 1
             elif isLessThan(list_1[list_1_index], list_2[list_2_index]):
                 OUTPUT.write("{}\t{}\t{}\t{}\t{}\t{}\n".format(
                     list_1[list_1_index]['chromosome'],
