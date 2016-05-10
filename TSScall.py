@@ -512,7 +512,7 @@ class TSSCalling(object):
             tss['cluster_count'] = cluster_count[tss['cluster']]
 
     def createDetailFile(self):
-        self.findTSSExonIntronOverlap()
+        # self.findTSSExonIntronOverlap()
         self.associateTSSsIntoClusters()
         with open(self.detail_file, 'w') as OUTPUT:
             OUTPUT.write('TSS ID\t\
@@ -525,9 +525,6 @@ class TSSCalling(object):
                 Reads\t\
                 Bidirectional?\t\
                 Bidirectional partner\t\
-                Gene overlap?\t\
-                Exon overlap?\t\
-                Intron overlap?\t\
                 TSS cluster\t\
                 TSSs in associated cluster\n')
             for tss in self.tss_list:
@@ -544,11 +541,9 @@ class TSSCalling(object):
                     OUTPUT.write('\tTrue\t' + tss['partner'])
                 else:
                     OUTPUT.write('\tFalse\tNA')
-                OUTPUT.write('\t' +
-                             str(tss['exon_overlap'] or tss['intron_overlap']))
+                # OUTPUT.write('\t' + str(
+                #     tss['exon_overlap'] or tss['intron_overlap']))
                 for entry in [
-                        'exon_overlap',
-                        'intron_overlap',
                         'cluster',
                         'cluster_count']:
                     OUTPUT.write('\t' + str(tss[entry]))
