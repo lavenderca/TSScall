@@ -68,19 +68,20 @@ def readInReferenceAnnotation(annotation_file):
             else:
                 gene = None
             if feature == 'exon':
-                if tr_id not in reference_annotation:
-                    reference_annotation[tr_id] = {
+                ref_id = (tr_id, chromosome)
+                if ref_id not in reference_annotation:
+                    reference_annotation[ref_id] = {
                         'chromosome': chromosome,
                         'strand': strand,
                         'exons': [],
                         'gene': gene
                         }
-                reference_annotation[tr_id]['exons'].append(
+                reference_annotation[ref_id]['exons'].append(
                     [int(start), int(end)]
                     )
     # TAKE ADDITIONAL INFORMATION FROM EXON LISTS
-    for tr_id in reference_annotation:
-        t = reference_annotation[tr_id]
+    for ref_id in reference_annotation:
+        t = reference_annotation[ref_id]
         t['exons'].sort(key=lambda x: x[0])
         t['tr_start'] = t['exons'][0][0]
         t['tr_end'] = t['exons'][len(t['exons'])-1][1]
@@ -169,32 +170,32 @@ class TSSCalling(object):
         # ADD SEARCH WINDOW EDGES TO ENTRIES
         transcript_list = []
 
-        for transcript in current_entry:
+        for ref in current_entry:
             transcript_list.append({
-                'transcript_ids': [transcript],
+                'transcript_ids': [ref[0]],
                 'chromosome':
-                    self.reference_annotation[transcript]['chromosome'],
-                'tss': [self.reference_annotation[transcript]['tss']],
-                'strand': self.reference_annotation[transcript]['strand'],
-                'genes': [self.reference_annotation[transcript]['gene']],
+                    self.reference_annotation[ref]['chromosome'],
+                'tss': [self.reference_annotation[ref]['tss']],
+                'strand': self.reference_annotation[ref]['strand'],
+                'genes': [self.reference_annotation[ref]['gene']],
                 'hits': []
             })
-            if self.reference_annotation[transcript]['strand'] == '+':
+            if self.reference_annotation[ref]['strand'] == '+':
                 transcript_list[-1]['start'] = \
                     transcript_list[-1]['tss'][0] - window_size
                 # MAKE SURE WINDOW END DOES NOT GO PAST TRANSCRIPT END
                 end = transcript_list[-1]['tss'][0] + window_size
-                if end > self.reference_annotation[transcript]['tr_end']:
+                if end > self.reference_annotation[ref]['tr_end']:
                     transcript_list[-1]['end'] = \
-                        self.reference_annotation[transcript]['tr_end']
+                        self.reference_annotation[ref]['tr_end']
                 else:
                     transcript_list[-1]['end'] = end
-            elif self.reference_annotation[transcript]['strand'] == '-':
+            elif self.reference_annotation[ref]['strand'] == '-':
                 # MAKE SURE WINDOW START DOES NOT GO PAST TRANSCRIPT START
                 start = transcript_list[-1]['tss'][0] - window_size
-                if start < self.reference_annotation[transcript]['tr_start']:
+                if start < self.reference_annotation[ref]['tr_start']:
                     transcript_list[-1]['start'] = \
-                        self.reference_annotation[transcript]['tr_end']
+                        self.reference_annotation[ref]['tr_end']
                 else:
                     transcript_list[-1]['start'] = start
                 transcript_list[-1]['end'] = \
