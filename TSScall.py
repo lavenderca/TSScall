@@ -173,16 +173,16 @@ class TSSCalling(object):
                 'transcript_ids': [transcript],
                 'chromosome':
                     self.reference_annotation[transcript]['chromosome'],
-                'tss': self.reference_annotation[transcript]['tss'],
+                'tss': [self.reference_annotation[transcript]['tss']],
                 'strand': self.reference_annotation[transcript]['strand'],
                 'genes': [self.reference_annotation[transcript]['gene']],
                 'hits': []
             })
             if self.reference_annotation[transcript]['strand'] == '+':
                 transcript_list[-1]['start'] = \
-                    transcript_list[-1]['tss'] - window_size
+                    transcript_list[-1]['tss'][0] - window_size
                 # MAKE SURE WINDOW END DOES NOT GO PAST TRANSCRIPT END
-                end = transcript_list[-1]['tss'] + window_size
+                end = transcript_list[-1]['tss'][0] + window_size
                 if end > self.reference_annotation[transcript]['tr_end']:
                     transcript_list[-1]['end'] = \
                         self.reference_annotation[transcript]['tr_end']
@@ -190,14 +190,14 @@ class TSSCalling(object):
                     transcript_list[-1]['end'] = end
             elif self.reference_annotation[transcript]['strand'] == '-':
                 # MAKE SURE WINDOW START DOES NOT GO PAST TRANSCRIPT START
-                start = transcript_list[-1]['tss'] - window_size
+                start = transcript_list[-1]['tss'][0] - window_size
                 if start < self.reference_annotation[transcript]['tr_start']:
                     transcript_list[-1]['start'] = \
                         self.reference_annotation[transcript]['tr_end']
                 else:
                     transcript_list[-1]['start'] = start
                 transcript_list[-1]['end'] = \
-                    transcript_list[-1]['tss'] + window_size
+                    transcript_list[-1]['tss'][0] + window_size
 
         merged_windows = []
 
@@ -209,12 +209,14 @@ class TSSCalling(object):
             next_entry = transcript_list.pop(0)
             if (working_entry['strand'] == next_entry['strand']) and \
                     (working_entry['chromosome'] == next_entry['chromosome']):
-                if working_entry['tss'] + join_window >= next_entry['tss']:
+                if working_entry['tss'][-1] + join_window >= \
+                        next_entry['tss'][0]:
                     working_entry['transcript_ids'].append(
                         next_entry['transcript_ids'][0]
                         )
                     working_entry['genes'].append(next_entry['genes'][0])
                     working_entry['end'] = next_entry['end']
+                    working_entry['tss'].append(next_entry['tss'][0])
                 elif working_entry['end'] >= next_entry['start']:
                     working_entry['end'] = int(math.floor(
                         (working_entry['end']+next_entry['start'])/2
@@ -567,19 +569,19 @@ class TSSCalling(object):
     # COUNT IS RETURNED IN ORDER TO UPDATE INSTANCE VARIABLES
     def callTSSsFromIntersection(self, intersection, read_threshold, base_name,
                                  count, tss_type, nearest_allowed):
-        def callTSS(hits):
+        def callTSS(hits, strand):
             if self.call_method == 'global':
                 max_reads = float('-inf')
                 max_position = None
-                for hit in current_entry['hits']:
+                for hit in hits:
                     if hit[1] > max_reads:
                         max_position = hit[0]
                         max_reads = hit[1]
                     elif hit[1] == max_reads:
-                        if current_entry['strand'] == '+':
+                        if strand == '+':
                             if hit[0] < max_position:
                                 max_position = hit[0]
-                        elif current_entry['strand'] == '-':
+                        elif strand == '-':
                             if hit[0] > max_position:
                                 max_position = hit[0]
                 return max_position, max_reads
@@ -617,11 +619,11 @@ class TSSCalling(object):
 
         # ITERATE THROUGH WINDOWS IN INTERSECTION
         for entry in intersection:
-            current_entry = entry
+            entry_hits = entry['hits']
             # LOOP WHILE 'HITS' IS POPULATED
-            while len(current_entry['hits']) != 0:
+            while len(entry_hits) != 0:
                 # CALL A TSS
-                tss_position, tss_reads = callTSS(current_entry['hits'])
+                tss_position, tss_reads = callTSS(entry_hits, entry['strand'])
                 if tss_reads >= read_threshold:
                     self.tss_list.append({
                         'id': getID(base_name, count),
@@ -638,17 +640,18 @@ class TSSCalling(object):
                     count += 1
                 # GO THROUGH HITS, KEEP THOSE WITHIN NEAREST_ALLOWED
                 temp = []
-                for hit in current_entry['hits']:
+                for hit in entry_hits:
                     if abs(hit[0] - tss_position) > nearest_allowed:
                         temp.append(hit)
-                current_entry['hits'] = temp
+                entry_hits = temp
         return count
 
     def callTSSsFromAnnotation(self, bedgraph_list, read_threshold):
-        ref_search_windows = self.createSearchWindowsFromAnnotation()
-        self.findIntersectionWithBedGraph(ref_search_windows, bedgraph_list)
+        self.ref_search_windows = self.createSearchWindowsFromAnnotation()
+        self.findIntersectionWithBedGraph(self.ref_search_windows,
+                                          bedgraph_list)
         self.annotated_tss_count = self.callTSSsFromIntersection(
-            ref_search_windows,
+            self.ref_search_windows,
             read_threshold,
             'obsTSS',
             self.annotated_tss_count,
@@ -680,20 +683,21 @@ class TSSCalling(object):
                                                      self.reverse_bedgraph)
         genome_size = self.findGenomeSize(self.chrom_sizes)
         sys.stdout.write('Calculating read threshold...\n')
-        read_threshold = self.findReadThreshold(bedgraph_list, genome_size)
+        self.read_threshold = \
+            self.findReadThreshold(bedgraph_list, genome_size)
         sys.stdout.write('Read threshold set to {}\n'.format(
-            str(read_threshold)))
+            str(self.read_threshold)))
 
         if self.annotation_file:
             sys.stdout.write('Reading in annotation file...\n')
             self.reference_annotation =\
                 readInReferenceAnnotation(self.annotation_file)
             sys.stdout.write('Calling TSSs from annotation...\n')
-            self.callTSSsFromAnnotation(bedgraph_list, read_threshold)
+            self.callTSSsFromAnnotation(bedgraph_list, self.read_threshold)
             sys.stdout.write('{} TSSs called from annotation\n'.format(
                 str(self.annotated_tss_count)))
         sys.stdout.write('Calling unannotated TSSs...\n')
-        self.callUnannotatedTSSs(bedgraph_list, read_threshold)
+        self.callUnannotatedTSSs(bedgraph_list, self.read_threshold)
         sys.stdout.write('{} unannotated TSSs called\n'.format(
             str(self.unannotated_tss_count)))
         sys.stdout.write('Associating bidirectional TSSs...\n')
