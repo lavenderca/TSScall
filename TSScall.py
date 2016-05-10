@@ -128,6 +128,8 @@ class TSSCalling(object):
         else:
             self.set_read_threshold = int(self.set_read_threshold)
 
+        # EVALUATE THRESHOLD METHOD ARGUMENTS; IF NONE, SET FDR_THRESHOLD
+        # AT 0.001
         implied_threshold_methods = 0
         for val in [
                 self.fdr_threshold,
@@ -139,7 +141,7 @@ class TSSCalling(object):
         elif implied_threshold_methods > 1:
             raise ValueError('More than 1 read threshold method implied!!')
         elif implied_threshold_methods == 0:
-            self.false_positives = 1
+            self.fdr_threshold = 0.001
 
         self.tss_list = []
         self.reference_annotation = None
@@ -709,11 +711,10 @@ class TSSCalling(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--fdr', default=None, type=float,
-                        help='set read threshold by FDR (FLOAT)')
+                        help='set read threshold by FDR (FLOAT) (Default \
+                        method: less than 0.001)')
     parser.add_argument('--false_positives', default=None, type=int,
-                        help='set read threshold by false positive count \
-                        (INTEGER) (Default method: less than 1 false positive)\
-                        ')
+                        help='set read threshold by false positive count')
     parser.add_argument('--nutss_filter_size', default=750, type=int,
                         help='set nuTSS filter size; any read within INTEGER \
                         of obsTSS/annoTSS is filtered prior to nuTSS calling \
