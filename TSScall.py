@@ -650,7 +650,7 @@ class TSSCalling(object):
             read_threshold,
             'obsTSS',
             self.annotated_tss_count,
-            'from annotation',
+            'called from reference window',
             float('inf')
             )
 
