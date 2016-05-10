@@ -515,18 +515,20 @@ class TSSCalling(object):
         # self.findTSSExonIntronOverlap()
         self.associateTSSsIntoClusters()
         with open(self.detail_file, 'w') as OUTPUT:
-            OUTPUT.write('TSS ID\t\
-                Type\t\
-                Transcripts\t\
-                Genes\t\
-                Strand\t\
-                Chromosome\t\
-                Position\t\
-                Reads\t\
-                Bidirectional?\t\
-                Bidirectional partner\t\
-                TSS cluster\t\
-                TSSs in associated cluster\n')
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
+                         .format(
+                            'TSS ID',
+                            'Type',
+                            'Genes',
+                            'Strand',
+                            'Chromsome',
+                            'Position',
+                            'Reads',
+                            'Bidirectional?',
+                            'Bidirectional partner',
+                            'TSS cluster',
+                            'TSSs in associated cluster',
+                         ))
             for tss in self.tss_list:
                 OUTPUT.write(tss['id'])
                 OUTPUT.write('\t' + tss['type'])
