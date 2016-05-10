@@ -148,6 +148,7 @@ class TSSCalling(object):
         self.annotated_tss_count = 0
         self.unannotated_tss_count = 0
         self.tss_cluster_count = 0
+        self.unobserved_ref_count = 0
 
         self.execute()
 
@@ -514,13 +515,51 @@ class TSSCalling(object):
             tss['cluster_count'] = cluster_count[tss['cluster']]
 
     def createDetailFile(self):
+        def checkHits(window):
+            for hit in window['hits']:
+                if hit[1] >= self.read_threshold:
+                    return True
+            return False
+
+        def writeUnobservedEntry(OUTPUT, tss, tr_ids, gene_ids, window):
+            tss_id = getID('annoTSS', self.unobserved_ref_count)
+            self.unobserved_ref_count += 1
+
+            transcripts = tr_ids[0]
+            genes = gene_ids[0]
+            for i in range(1, len(tr_ids)):
+                transcripts += ',' + tr_ids[i]
+                genes += ',' + gene_ids[i]
+
+            reads = 0
+            for hit in window['hits']:
+                if int(tss) == int(hit[0]):
+                    reads = hit[1]
+
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
+                         .format(
+                            tss_id,
+                            'unobserved reference TSS',
+                            transcripts,
+                            genes,
+                            window['strand'],
+                            window['chromosome'],
+                            str(tss),
+                            str(reads),
+                            'NA',
+                            'NA',
+                            'NA',
+                            'NA',
+                         ))
+
         # self.findTSSExonIntronOverlap()
         self.associateTSSsIntoClusters()
         with open(self.detail_file, 'w') as OUTPUT:
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
                          .format(
                             'TSS ID',
                             'Type',
+                            'Transcripts',
                             'Genes',
                             'Strand',
                             'Chromsome',
@@ -531,6 +570,7 @@ class TSSCalling(object):
                             'TSS cluster',
                             'TSSs in associated cluster',
                          ))
+
             for tss in self.tss_list:
                 OUTPUT.write(tss['id'])
                 OUTPUT.write('\t' + tss['type'])
@@ -552,6 +592,43 @@ class TSSCalling(object):
                         'cluster_count']:
                     OUTPUT.write('\t' + str(tss[entry]))
                 OUTPUT.write('\n')
+
+            if self.ref_search_windows:
+                for window in self.ref_search_windows:
+                    if not checkHits(window):
+                        window_tss = []
+                        for tr_id, gene, tss in zip(window['transcript_ids'],
+                                                    window['genes'],
+                                                    window['tss']):
+                            window_tss.append({
+                                'transcript_id': tr_id,
+                                'gene': gene,
+                                'tss': int(tss),
+                            })
+                        window_tss.sort(key=itemgetter('tss'))
+
+                        current_tss = window_tss[0]['tss']
+                        current_tr_ids = [window_tss[0]['transcript_id']]
+                        current_genes = [window_tss[0]['gene']]
+                        window_index = 1
+                        while window_index < len(window_tss):
+                            if current_tss == window_tss[window_index]['tss']:
+                                current_tr_ids.append(
+                                    window_tss[window_index]['transcript_id'])
+                                current_genes.append(
+                                    window_tss[window_index]['gene'])
+                            else:
+                                writeUnobservedEntry(OUTPUT, current_tss,
+                                                     current_tr_ids,
+                                                     current_genes, window)
+                                current_tss = window_tss[window_index]['tss']
+                                current_tr_ids = \
+                                    [window_tss[window_index]['transcript_id']]
+                                current_genes = [window_tss[0]['gene']]
+                            window_index += 1
+                        writeUnobservedEntry(OUTPUT, current_tss,
+                                             current_tr_ids, current_genes,
+                                             window)
 
     def writeBedFile(self, tss_list, output_bed):
         with open(output_bed, 'w') as OUTPUT:
