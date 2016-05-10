@@ -29,10 +29,10 @@ Sets annotation fie.  Annotation file must be in GTF format.
 If a detail_file is set, additional information not found in the output BED file will be added to a tab-delimited TXT file.
 ### --fdr FDR
 If set, determines read threshold for TSS calling by FDR.  Threshold will be the minimum read count with an expected FDR less than the set FDR value.
+
+This is the default method.  Sets FDR at 0.001
 ### --false_positives FALSE_POSITIVES
 If set, determines read threshold for TSS calling by allowed false positives.  Threshold will be the minimum read count with the expected false positives less than the set value.
-
-This is the default method.  Sets maximum value at 1 expected false positive.
 ### --set_read_threshold SET_READ_THRESHOLD
 Sets the read threshold at user-defined count.
 ### --bidirectional_threshold BIDIRECTIONAL_THRESHOLD
