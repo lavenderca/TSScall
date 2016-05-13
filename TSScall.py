@@ -594,7 +594,7 @@ class TSSCalling(object):
                     OUTPUT.write('\t' + str(tss[entry]))
                 OUTPUT.write('\n')
 
-            if self.ref_search_windows:
+            if self.annotation_file:
                 for window in self.ref_search_windows:
                     if not checkHits(window):
                         window_tss = []
