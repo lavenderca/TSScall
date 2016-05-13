@@ -28,32 +28,11 @@ def readInBed(bed_fn, window):
 
 
 def compareTo(fn_1, fn_2, list_1, list_2, missing_fn):
-    # with open(missing_fn, 'w') as OUTPUT:
+
     if missing_fn:
         OUTPUT = open(missing_fn, 'w')
     sys.stdout.write('Bed file ' + fn_1 + ' contains ' +
                      str(len(list_1)) + ' entries.\n')
-
-    # position_list_1 = []
-    # list_2_positions = []
-    # shared = 0
-    #
-    # names_and_positions_list_1 = []
-    # for entry in list_1:
-    #     names_and_positions_list_1.append({
-    #         'name': entry['name'],
-    #         'position':entry['strand']+':'+entry['chromosome']+':'+str(entry['start'])+':'+str(entry['end'])
-    #         })
-    #
-    # positions_list_2 = []
-    # for entry in list_2:
-    #     positions_list_2.append(entry['strand']+':'+entry['chromosome']+':'+str(entry['start'])+':'+str(entry['end']))
-    #
-    # for entry in names_and_positions_list_1:
-    #     if entry['position'] in positions_list_2:
-    #         shared += 1
-    #     else:
-    #         OUTPUT.write(entry['name'] + '\t' + entry['position'] + '\n')
 
     list_1 = sortList(list_1, 'sort_by_strand')
     list_2 = sortList(list_2, 'sort_by_strand')
