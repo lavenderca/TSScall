@@ -77,7 +77,9 @@ def readInReferenceAnnotation(annotation_file):
                     all_gtf_keys.append(key)
 
             tr_id = gtf_fields.pop('transcript_id')[0]
-            all_gtf_keys.remove('transcript_id')
+            gene_id = gtf_fields.pop('gene_id')[0]
+            for val in ('transcript_id', 'gene_id'):
+                all_gtf_keys.remove(val)
 
             if feature == 'exon':
                 ref_id = (tr_id, chromosome)
@@ -86,7 +88,7 @@ def readInReferenceAnnotation(annotation_file):
                         'chromosome': chromosome,
                         'strand': strand,
                         'exons': [],
-                        # 'gene': gene,
+                        'gene_id': gene_id,
                         'gtf_fields': gtf_fields,
                         }
                 reference_annotation[ref_id]['exons'].append(
@@ -189,12 +191,12 @@ class TSSCalling(object):
 
         for ref in current_entry:
             transcript_list.append({
-                'transcript_ids': [ref[0]],
+                'transcript_id': [ref[0]],
                 'chromosome':
                     self.reference_annotation[ref]['chromosome'],
                 'tss': [self.reference_annotation[ref]['tss']],
                 'strand': self.reference_annotation[ref]['strand'],
-                # 'genes': [self.reference_annotation[ref]['gene']],
+                'gene_id': [self.reference_annotation[ref]['gene_id']],
                 'hits': [],
                 'gtf_fields': self.reference_annotation[ref]['gtf_fields'],
             })
@@ -231,8 +233,11 @@ class TSSCalling(object):
                     (working_entry['chromosome'] == next_entry['chromosome']):
                 if working_entry['tss'][-1] + join_window >= \
                         next_entry['tss'][0]:
-                    working_entry['transcript_ids'].append(
-                        next_entry['transcript_ids'][0]
+                    working_entry['transcript_id'].append(
+                        next_entry['transcript_id'][0]
+                        )
+                    working_entry['gene_id'].append(
+                        next_entry['gene_id'][0]
                         )
                     for key in working_entry['gtf_fields']:
                         working_entry['gtf_fields'][key].append(
@@ -544,27 +549,27 @@ class TSSCalling(object):
                     return True
             return False
 
-        def writeUnobservedEntry(OUTPUT, tss, tr_ids, window):
+        def writeUnobservedEntry(OUTPUT, tss, tr_ids, gene_ids, window):
             tss_id = getID('annoTSS', self.unobserved_ref_count)
             self.unobserved_ref_count += 1
 
             transcripts = tr_ids[0]
-            # genes = gene_ids[0]
+            genes = gene_ids[0]
             for i in range(1, len(tr_ids)):
                 transcripts += ',' + tr_ids[i]
-                # genes += ',' + gene_ids[i]
+                genes += ',' + gene_ids[i]
 
             reads = 0
             for hit in window['hits']:
                 if int(tss) == int(hit[0]):
                     reads = hit[1]
 
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                          .format(
                             tss_id,
                             'unobserved reference TSS',
                             transcripts,
-                            # genes,
+                            genes,
                             window['strand'],
                             window['chromosome'],
                             str(tss),
@@ -581,12 +586,12 @@ class TSSCalling(object):
         # self.findTSSExonIntronOverlap()
         self.associateTSSsIntoClusters()
         with open(self.detail_file, 'w') as OUTPUT:
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                          .format(
                             'TSS ID',
                             'Type',
                             'Transcripts',
-                            # 'Genes',
+                            'Gene ID',
                             'Strand',
                             'Chromsome',
                             'Position',
@@ -603,12 +608,11 @@ class TSSCalling(object):
             for tss in self.tss_list:
                 OUTPUT.write(tss['id'])
                 OUTPUT.write('\t' + tss['type'])
-                # for entry in ['transcript_ids', 'genes']:
-                #     if entry in tss:
-                if 'transcript_ids' in tss:
-                    OUTPUT.write('\t' + ','.join(tss['transcript_ids']))
-                else:
-                    OUTPUT.write('\tNA')
+                for key in ('transcript_id', 'gene_id'):
+                    if key in tss:
+                        OUTPUT.write('\t' + ','.join(tss[key]))
+                    else:
+                        OUTPUT.write('\tNA')
                 for entry in ['strand', 'chromosome', 'start', 'reads']:
                     OUTPUT.write('\t' + str(tss[entry]))
                 if 'partner' in tss:
@@ -633,36 +637,39 @@ class TSSCalling(object):
                 for window in self.ref_search_windows:
                     if not checkHits(window):
                         window_tss = []
-                        for tr_id, tss in zip(window['transcript_ids'],
-                                              window['tss']):
+                        for tr_id, gene_id, tss in zip(window['transcript_id'],
+                                                       window['gene_id'],
+                                                       window['tss']):
                             window_tss.append({
                                 'transcript_id': tr_id,
-                                # 'gene': gene,
+                                'gene_id': gene_id,
                                 'tss': int(tss),
                             })
                         window_tss.sort(key=itemgetter('tss'))
 
                         current_tss = window_tss[0]['tss']
                         current_tr_ids = [window_tss[0]['transcript_id']]
-                        # current_genes = [window_tss[0]['gene']]
+                        current_genes = [window_tss[0]['gene_id']]
                         window_index = 1
                         while window_index < len(window_tss):
                             if current_tss == window_tss[window_index]['tss']:
                                 current_tr_ids.append(
                                     window_tss[window_index]['transcript_id'])
-                                # current_genes.append(
-                                #     window_tss[window_index]['gene'])
+                                current_genes.append(
+                                    window_tss[window_index]['gene_id'])
                             else:
                                 writeUnobservedEntry(OUTPUT, current_tss,
                                                      current_tr_ids,
+                                                     current_genes,
                                                      window)
                                 current_tss = window_tss[window_index]['tss']
                                 current_tr_ids = \
                                     [window_tss[window_index]['transcript_id']]
-                                # current_genes = [window_tss[0]['gene']]
+                                current_genes = [window_tss[0]['gene_id']]
                             window_index += 1
                         writeUnobservedEntry(OUTPUT, current_tss,
-                                             current_tr_ids, window)
+                                             current_tr_ids, current_genes,
+                                             window)
 
     def writeBedFile(self, tss_list, output_bed):
         with open(output_bed, 'w') as OUTPUT:
@@ -744,7 +751,7 @@ class TSSCalling(object):
                         'reads': tss_reads,
                         })
                     # IF VAL IN ENTRY, ADD TO DICT IN TSS LIST
-                    for val in ['transcript_ids', 'strand',
+                    for val in ['transcript_id', 'gene_id', 'strand',
                                 'chromosome', 'gtf_fields']:
                         if val in entry:
                             self.tss_list[-1][val] = entry[val]
