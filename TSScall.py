@@ -58,15 +58,27 @@ def getID(base_name, count):
 
 def readInReferenceAnnotation(annotation_file):
     reference_annotation = dict()
+    all_gtf_keys = []
     with open(annotation_file) as f:
         for line in f:
             chromosome, source, feature, start, end, score, strand, frame,\
-                attribute = line.strip().split('\t')
-            tr_id = attribute.split('transcript_id')[1].split('\"')[1]
-            if len(attribute.split('gene_id')) > 1:
-                gene = attribute.split('gene_id')[1].split('\"')[1]
-            else:
-                gene = None
+                attributes = line.strip().split('\t')
+
+            keys = []
+            values = []
+            gtf_fields = dict()
+            for entry in attributes.split(';')[:-1]:
+                keys.append(entry.split('\"')[0].strip())
+                values.append(entry.split('\"')[1].strip())
+            for key, value in zip(keys, values):
+                gtf_fields[key] = [value]
+            for key in keys:
+                if key not in all_gtf_keys:
+                    all_gtf_keys.append(key)
+
+            tr_id = gtf_fields.pop('transcript_id')[0]
+            all_gtf_keys.remove('transcript_id')
+
             if feature == 'exon':
                 ref_id = (tr_id, chromosome)
                 if ref_id not in reference_annotation:
@@ -74,14 +86,15 @@ def readInReferenceAnnotation(annotation_file):
                         'chromosome': chromosome,
                         'strand': strand,
                         'exons': [],
-                        'gene': gene
+                        # 'gene': gene,
+                        'gtf_fields': gtf_fields,
                         }
                 reference_annotation[ref_id]['exons'].append(
                     [int(start), int(end)]
                     )
-    # TAKE ADDITIONAL INFORMATION FROM EXON LISTS
     for ref_id in reference_annotation:
         t = reference_annotation[ref_id]
+        # TAKE ADDITIONAL INFORMATION FROM EXON LISTS
         t['exons'].sort(key=lambda x: x[0])
         t['tr_start'] = t['exons'][0][0]
         t['tr_end'] = t['exons'][len(t['exons'])-1][1]
@@ -90,7 +103,11 @@ def readInReferenceAnnotation(annotation_file):
         if t['strand'] == '-':
             t['tss'] = t['tr_end']
         t['gene_length'] = t['tr_end'] - t['tr_start']
-    return reference_annotation
+        # POPULATE MISSING GTF FIELD ENTRIES
+        for key in all_gtf_keys:
+            if key not in t['gtf_fields']:
+                t['gtf_fields'][key] = None
+    return reference_annotation, all_gtf_keys
 
 
 class TSSCalling(object):
@@ -162,8 +179,8 @@ class TSSCalling(object):
             self.reference_annotation[k]['strand'],
             self.reference_annotation[k]['chromosome'],
             self.reference_annotation[k]['tss'],
-            self.reference_annotation[k]['gene'],
-            k
+            # self.reference_annotation[k]['gene'],
+            k,
             ))
 
         # POPULATE TRANSCRIPT LIST FROM SORTED LIST;
@@ -177,8 +194,9 @@ class TSSCalling(object):
                     self.reference_annotation[ref]['chromosome'],
                 'tss': [self.reference_annotation[ref]['tss']],
                 'strand': self.reference_annotation[ref]['strand'],
-                'genes': [self.reference_annotation[ref]['gene']],
-                'hits': []
+                # 'genes': [self.reference_annotation[ref]['gene']],
+                'hits': [],
+                'gtf_fields': self.reference_annotation[ref]['gtf_fields'],
             })
             if self.reference_annotation[ref]['strand'] == '+':
                 transcript_list[-1]['start'] = \
@@ -216,7 +234,11 @@ class TSSCalling(object):
                     working_entry['transcript_ids'].append(
                         next_entry['transcript_ids'][0]
                         )
-                    working_entry['genes'].append(next_entry['genes'][0])
+                    for key in working_entry['gtf_fields']:
+                        working_entry['gtf_fields'][key].append(
+                            next_entry['gtf_fields'][key][0]
+                            )
+                    # working_entry['genes'].append(next_entry['genes'][0])
                     working_entry['end'] = next_entry['end']
                     working_entry['tss'].append(next_entry['tss'][0])
                 elif working_entry['end'] >= next_entry['start']:
@@ -522,27 +544,27 @@ class TSSCalling(object):
                     return True
             return False
 
-        def writeUnobservedEntry(OUTPUT, tss, tr_ids, gene_ids, window):
+        def writeUnobservedEntry(OUTPUT, tss, tr_ids, window):
             tss_id = getID('annoTSS', self.unobserved_ref_count)
             self.unobserved_ref_count += 1
 
             transcripts = tr_ids[0]
-            genes = gene_ids[0]
+            # genes = gene_ids[0]
             for i in range(1, len(tr_ids)):
                 transcripts += ',' + tr_ids[i]
-                genes += ',' + gene_ids[i]
+                # genes += ',' + gene_ids[i]
 
             reads = 0
             for hit in window['hits']:
                 if int(tss) == int(hit[0]):
                     reads = hit[1]
 
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                          .format(
                             tss_id,
                             'unobserved reference TSS',
                             transcripts,
-                            genes,
+                            # genes,
                             window['strand'],
                             window['chromosome'],
                             str(tss),
@@ -552,16 +574,19 @@ class TSSCalling(object):
                             'NA',
                             'NA',
                          ))
+            for key in self.gtf_attribute_fields:
+                OUTPUT.write('\t' + ','.join(window['gtf_fields'][key]))
+            OUTPUT.write('\n')
 
         # self.findTSSExonIntronOverlap()
         self.associateTSSsIntoClusters()
         with open(self.detail_file, 'w') as OUTPUT:
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                          .format(
                             'TSS ID',
                             'Type',
                             'Transcripts',
-                            'Genes',
+                            # 'Genes',
                             'Strand',
                             'Chromsome',
                             'Position',
@@ -571,15 +596,19 @@ class TSSCalling(object):
                             'TSS cluster',
                             'TSSs in associated cluster',
                          ))
+            for field in self.gtf_attribute_fields:
+                OUTPUT.write('\t' + field)
+            OUTPUT.write('\n')
 
             for tss in self.tss_list:
                 OUTPUT.write(tss['id'])
                 OUTPUT.write('\t' + tss['type'])
-                for entry in ['transcript_ids', 'genes']:
-                    if entry in tss:
-                        OUTPUT.write('\t' + ','.join(tss[entry]))
-                    else:
-                        OUTPUT.write('\tNA')
+                # for entry in ['transcript_ids', 'genes']:
+                #     if entry in tss:
+                if 'transcript_ids' in tss:
+                    OUTPUT.write('\t' + ','.join(tss['transcript_ids']))
+                else:
+                    OUTPUT.write('\tNA')
                 for entry in ['strand', 'chromosome', 'start', 'reads']:
                     OUTPUT.write('\t' + str(tss[entry]))
                 if 'partner' in tss:
@@ -592,44 +621,48 @@ class TSSCalling(object):
                         'cluster',
                         'cluster_count']:
                     OUTPUT.write('\t' + str(tss[entry]))
+                if 'gtf_fields' in tss:
+                    for key in self.gtf_attribute_fields:
+                        OUTPUT.write('\t' + ','.join(tss['gtf_fields'][key]))
+                else:
+                    for key in self.gtf_attribute_fields:
+                        OUTPUT.write('\tNA')
                 OUTPUT.write('\n')
 
             if self.annotation_file:
                 for window in self.ref_search_windows:
                     if not checkHits(window):
                         window_tss = []
-                        for tr_id, gene, tss in zip(window['transcript_ids'],
-                                                    window['genes'],
-                                                    window['tss']):
+                        for tr_id, tss in zip(window['transcript_ids'],
+                                              window['tss']):
                             window_tss.append({
                                 'transcript_id': tr_id,
-                                'gene': gene,
+                                # 'gene': gene,
                                 'tss': int(tss),
                             })
                         window_tss.sort(key=itemgetter('tss'))
 
                         current_tss = window_tss[0]['tss']
                         current_tr_ids = [window_tss[0]['transcript_id']]
-                        current_genes = [window_tss[0]['gene']]
+                        # current_genes = [window_tss[0]['gene']]
                         window_index = 1
                         while window_index < len(window_tss):
                             if current_tss == window_tss[window_index]['tss']:
                                 current_tr_ids.append(
                                     window_tss[window_index]['transcript_id'])
-                                current_genes.append(
-                                    window_tss[window_index]['gene'])
+                                # current_genes.append(
+                                #     window_tss[window_index]['gene'])
                             else:
                                 writeUnobservedEntry(OUTPUT, current_tss,
                                                      current_tr_ids,
-                                                     current_genes, window)
+                                                     window)
                                 current_tss = window_tss[window_index]['tss']
                                 current_tr_ids = \
                                     [window_tss[window_index]['transcript_id']]
-                                current_genes = [window_tss[0]['gene']]
+                                # current_genes = [window_tss[0]['gene']]
                             window_index += 1
                         writeUnobservedEntry(OUTPUT, current_tss,
-                                             current_tr_ids, current_genes,
-                                             window)
+                                             current_tr_ids, window)
 
     def writeBedFile(self, tss_list, output_bed):
         with open(output_bed, 'w') as OUTPUT:
@@ -711,8 +744,8 @@ class TSSCalling(object):
                         'reads': tss_reads,
                         })
                     # IF VAL IN ENTRY, ADD TO DICT IN TSS LIST
-                    for val in ['transcript_ids', 'genes', 'strand',
-                                'chromosome']:
+                    for val in ['transcript_ids', 'strand',
+                                'chromosome', 'gtf_fields']:
                         if val in entry:
                             self.tss_list[-1][val] = entry[val]
                     count += 1
@@ -768,7 +801,7 @@ class TSSCalling(object):
 
         if self.annotation_file:
             sys.stdout.write('Reading in annotation file...\n')
-            self.reference_annotation =\
+            self.reference_annotation, self.gtf_attribute_fields =\
                 readInReferenceAnnotation(self.annotation_file)
             sys.stdout.write('Calling TSSs from annotation...\n')
             self.callTSSsFromAnnotation(bedgraph_list, self.read_threshold)
