@@ -165,6 +165,7 @@ class TSSCalling(object):
 
         self.tss_list = []
         self.reference_annotation = None
+        self.gtf_attribute_fields = []
         self.annotated_tss_count = 0
         self.unannotated_tss_count = 0
         self.tss_cluster_count = 0
