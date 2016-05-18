@@ -135,6 +135,7 @@ class TSSCalling(object):
         self.bidirectional_threshold = kwargs['bidirectional_threshold']
         self.cluster_threshold = kwargs['cluster_threshold']
         self.detail_file = kwargs['detail_file']
+        self.cluster_bed = kwargs['cluster_bed']
         self.call_method = kwargs['call_method']
         self.annotation_join_distance = kwargs['annotation_join_distance']
         self.annotation_search_window = kwargs['annotation_search_window']
@@ -585,7 +586,7 @@ class TSSCalling(object):
             OUTPUT.write('\n')
 
         # self.findTSSExonIntronOverlap()
-        self.associateTSSsIntoClusters()
+        # self.associateTSSsIntoClusters()
         with open(self.detail_file, 'w') as OUTPUT:
             OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                          .format(
@@ -671,6 +672,26 @@ class TSSCalling(object):
                         writeUnobservedEntry(OUTPUT, current_tss,
                                              current_tr_ids, current_genes,
                                              window)
+
+    def writeClusterBed(self, tss_list, cluster_bed):
+        clusters = dict()
+        with open(cluster_bed, 'w') as OUTPUT:
+            for tss in tss_list:
+                if tss['cluster'] in clusters:
+                    clusters[tss['cluster']]['tss'].append(tss['start'])
+                else:
+                    clusters[tss['cluster']] = {
+                        'chromosome': tss['chromosome'],
+                        'tss': [tss['start']],
+                    }
+            for cluster in sorted(clusters):
+                tss = sorted(clusters[cluster]['tss'])
+                OUTPUT.write('{}\t{}\t{}\t{}\n'.format(
+                    clusters[cluster]['chromosome'],
+                    str(tss[0] - 1),
+                    str(tss[-1]),
+                    cluster,
+                ))
 
     def writeBedFile(self, tss_list, output_bed):
         with open(output_bed, 'w') as OUTPUT:
@@ -821,9 +842,13 @@ class TSSCalling(object):
             str(self.unannotated_tss_count)))
         sys.stdout.write('Associating bidirectional TSSs...\n')
         self.associateBidirectionalTSSs()
+        self.associateTSSsIntoClusters()
         if self.detail_file:
             sys.stdout.write('Creating detail file...\n')
             self.createDetailFile()
+        if self.cluster_bed:
+            sys.stdout.write('Creating cluster bed...\n')
+            self.writeClusterBed(self.tss_list, self.cluster_bed)
         sys.stdout.write('Creating output bed...\n')
         self.writeBedFile(self.tss_list, self.output_bed)
         sys.stdout.write('TSS calling complete\n')
@@ -868,6 +893,8 @@ if __name__ == '__main__':
     parser.add_argument('--bin_winner_size', type=int, default=200,
                         help='set bin size for call method bin_winner \
                         (Default: 200)')
+    parser.add_argument('--cluster_bed', type=str, default=None,
+                        help='write clusters to output bed file')
     parser.add_argument('forward_bedgraph', type=str,
                         help='forward strand Start-seq bedgraph file')
     parser.add_argument('reverse_bedgraph', type=str,
