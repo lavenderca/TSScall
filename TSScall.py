@@ -557,8 +557,8 @@ class TSSCalling(object):
             transcripts = tr_ids[0]
             genes = gene_ids[0]
             for i in range(1, len(tr_ids)):
-                transcripts += ',' + tr_ids[i]
-                genes += ',' + gene_ids[i]
+                transcripts += ';' + tr_ids[i]
+                genes += ';' + gene_ids[i]
 
             reads = 0
             for hit in window['hits']:
@@ -581,7 +581,7 @@ class TSSCalling(object):
                             'NA',
                          ))
             for key in self.gtf_attribute_fields:
-                OUTPUT.write('\t' + ','.join(window['gtf_fields'][key]))
+                OUTPUT.write('\t' + ';'.join(window['gtf_fields'][key]))
             OUTPUT.write('\n')
 
         # self.findTSSExonIntronOverlap()
@@ -611,7 +611,7 @@ class TSSCalling(object):
                 OUTPUT.write('\t' + tss['type'])
                 for key in ('transcript_id', 'gene_id'):
                     if key in tss:
-                        OUTPUT.write('\t' + ','.join(tss[key]))
+                        OUTPUT.write('\t' + ';'.join(tss[key]))
                     else:
                         OUTPUT.write('\tNA')
                 for entry in ['strand', 'chromosome', 'start', 'reads']:
@@ -628,7 +628,7 @@ class TSSCalling(object):
                     OUTPUT.write('\t' + str(tss[entry]))
                 if 'gtf_fields' in tss:
                     for key in self.gtf_attribute_fields:
-                        OUTPUT.write('\t' + ','.join(tss['gtf_fields'][key]))
+                        OUTPUT.write('\t' + ';'.join(tss['gtf_fields'][key]))
                 else:
                     for key in self.gtf_attribute_fields:
                         OUTPUT.write('\tNA')
