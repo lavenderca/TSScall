@@ -59,3 +59,5 @@ Default: 250
 Prior to calling of unannotated TSSs, Start-seq reads are filtered based on annotated TSSs and TSSs called from annotation.  If a Start-seq read is within the nuTSS filter size of a TSS in the annotation or called from the annotation, it is filtered prior to unannotated TSS calling.
 
 Default: 750
+### --cluster_bed CLUSTER_BED
+Writes clusters to unstranded BED file CLUSTER_BED
