@@ -448,8 +448,12 @@ class TSSCalling(object):
                     if self.tss_list[i]['start'] + \
                             self.bidirectional_threshold >= \
                             self.tss_list[i+1]['start']:
+                        distance = abs(self.tss_list[i]['start'] -
+                                       self.tss_list[i+1]['start'])
                         self.tss_list[i]['partner'] = self.tss_list[i+1]['id']
                         self.tss_list[i+1]['partner'] = self.tss_list[i]['id']
+                        self.tss_list[i]['bidirectional distance'] = distance
+                        self.tss_list[i+1]['bidirectional distance'] = distance
 
     def findTSSExonIntronOverlap(self):
         exons = []
@@ -566,7 +570,7 @@ class TSSCalling(object):
                 if int(tss) == int(hit[0]):
                     reads = hit[1]
 
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                          .format(
                             tss_id,
                             'unobserved reference TSS',
@@ -580,6 +584,8 @@ class TSSCalling(object):
                             'NA',
                             'NA',
                             'NA',
+                            'NA',
+                            'NA',
                          ))
             for key in self.gtf_attribute_fields:
                 OUTPUT.write('\t' + ';'.join(window['gtf_fields'][key]))
@@ -588,7 +594,7 @@ class TSSCalling(object):
         # self.findTSSExonIntronOverlap()
         # self.associateTSSsIntoClusters()
         with open(self.detail_file, 'w') as OUTPUT:
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                          .format(
                             'TSS ID',
                             'Type',
@@ -600,6 +606,7 @@ class TSSCalling(object):
                             'Reads',
                             'Bidirectional?',
                             'Bidirectional partner',
+                            'Bidirectional distance',
                             'TSS cluster',
                             'TSSs in associated cluster',
                          ))
@@ -618,9 +625,13 @@ class TSSCalling(object):
                 for entry in ['strand', 'chromosome', 'start', 'reads']:
                     OUTPUT.write('\t' + str(tss[entry]))
                 if 'partner' in tss:
-                    OUTPUT.write('\tTrue\t' + tss['partner'])
+                    OUTPUT.write('\t{}\t{}\t{}'.format(
+                        'True',
+                        tss['partner'],
+                        str(tss['bidirectional distance']),
+                    ))
                 else:
-                    OUTPUT.write('\tFalse\tNA')
+                    OUTPUT.write('\tFalse\tNA\tNA')
                 # OUTPUT.write('\t' + str(
                 #     tss['exon_overlap'] or tss['intron_overlap']))
                 for entry in [
