@@ -25,7 +25,7 @@ def selectClusterRepresentatives(input_detail, output_bed, output_detail):
     if output_detail:
         DETAIL_OUTPUT = open(output_detail, 'w')
 
-    with open(sys.argv[1]) as f, open(output_bed, 'w') as BED_OUTPUT:
+    with open(input_detail) as f, open(output_bed, 'w') as BED_OUTPUT:
         header = next(f)
         if output_detail:
             DETAIL_OUTPUT.write(header)
@@ -41,9 +41,10 @@ def selectClusterRepresentatives(input_detail, output_bed, output_detail):
                 reads,
                 bidirectional_flag,
                 bidirectional_partner,
+                bidirectional_distance,
                 tss_cluster,
                 cluster_members
-            ] = line.strip().split('\t')[0:12]
+            ] = line.strip().split('\t')[0:13]
 
             detail_entries[tss_id] = line
 
@@ -85,7 +86,7 @@ def selectClusterRepresentatives(input_detail, output_bed, output_detail):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--output_detail', type=str,
+    parser.add_argument('--output_detail', type=str, default=None,
                         help='output detail file with cluster representatives')
     parser.add_argument('input_detail_file', type=str,
                         help='detail file from TSScall.py')
