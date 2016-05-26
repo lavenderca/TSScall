@@ -56,7 +56,7 @@ def compareTo(fn_1, fn_2, list_1, list_2, missing_fn):
                     list_1[list_1_index]['score'],
                     list_1[list_1_index]['strand']
                     ))
-                list_1_index += 1
+            list_1_index += 1
         else:
             list_2_index += 1
 
