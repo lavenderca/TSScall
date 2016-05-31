@@ -108,7 +108,7 @@ def readInReferenceAnnotation(annotation_file):
         # POPULATE MISSING GTF FIELD ENTRIES
         for key in all_gtf_keys:
             if key not in t['gtf_fields']:
-                t['gtf_fields'][key] = None
+                t['gtf_fields'][key] = ['None']
     return reference_annotation, all_gtf_keys
 
 
