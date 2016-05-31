@@ -6,9 +6,7 @@
 # WORKING OBJECT ORIENTED VERSION
 
 import os
-import math
 import argparse
-import sys
 from operator import itemgetter
 from TSScall import readInReferenceAnnotation
 
