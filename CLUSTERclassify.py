@@ -180,6 +180,9 @@ class ClusterClassify(object):
         self.id_field = kwargs['identification_field']
         self.proximity_threshold = kwargs['proximity_threshold']
 
+        assert os.path.exists(self.input_detail_file)
+        assert os.path.exists(self.annotation_file)
+
         self.execute()
 
     def printOutput(self, clusters, output_file):
