@@ -108,7 +108,7 @@ def readInReferenceAnnotation(annotation_file):
         # POPULATE MISSING GTF FIELD ENTRIES
         for key in all_gtf_keys:
             if key not in t['gtf_fields']:
-                t['gtf_fields'][key] = None
+                t['gtf_fields'][key] = ['None']
     return reference_annotation, all_gtf_keys
 
 
@@ -593,6 +593,12 @@ class TSSCalling(object):
 
         # self.findTSSExonIntronOverlap()
         # self.associateTSSsIntoClusters()
+        # Remove GTF fields 'exon_number' and 'exon_id' if present
+        skip_fields = ['exon_number', 'exon_id']
+        for entry in skip_fields:
+            if entry in self.gtf_attribute_fields:
+                self.gtf_attribute_fields.remove(entry)
+
         with open(self.detail_file, 'w') as OUTPUT:
             OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                          .format(
