@@ -108,7 +108,7 @@ def readInReferenceAnnotation(annotation_file):
         # POPULATE MISSING GTF FIELD ENTRIES
         for key in all_gtf_keys:
             if key not in t['gtf_fields']:
-                t['gtf_fields'][key] = ['None']
+                t['gtf_fields'][key] = [None]
     return reference_annotation, all_gtf_keys
 
 
@@ -450,10 +450,25 @@ class TSSCalling(object):
                             self.tss_list[i+1]['start']:
                         distance = abs(self.tss_list[i]['start'] -
                                        self.tss_list[i+1]['start'])
-                        self.tss_list[i]['partner'] = self.tss_list[i+1]['id']
-                        self.tss_list[i+1]['partner'] = self.tss_list[i]['id']
-                        self.tss_list[i]['bidirectional distance'] = distance
-                        self.tss_list[i+1]['bidirectional distance'] = distance
+                        self.tss_list[i]['divergent partner'] = \
+                            self.tss_list[i+1]['id']
+                        self.tss_list[i+1]['divergent partner'] = \
+                            self.tss_list[i]['id']
+                        self.tss_list[i]['divergent distance'] = distance
+                        self.tss_list[i+1]['divergent distance'] = distance
+                if self.tss_list[i]['strand'] == '+' and \
+                        self.tss_list[i+1]['strand'] == '-':
+                    if self.tss_list[i]['start'] + \
+                            self.bidirectional_threshold >= \
+                            self.tss_list[i+1]['start']:
+                        distance = abs(self.tss_list[i]['start'] -
+                                       self.tss_list[i+1]['start'])
+                        self.tss_list[i]['convergent partner'] = \
+                            self.tss_list[i+1]['id']
+                        self.tss_list[i+1]['convergent partner'] = \
+                            self.tss_list[i]['id']
+                        self.tss_list[i]['convergent distance'] = distance
+                        self.tss_list[i+1]['convergent distance'] = distance
 
     def findTSSExonIntronOverlap(self):
         exons = []
@@ -588,7 +603,9 @@ class TSSCalling(object):
                             'NA',
                          ))
             for key in self.gtf_attribute_fields:
-                OUTPUT.write('\t' + ';'.join(window['gtf_fields'][key]))
+                # OUTPUT.write('\t' + ';'.join(window['gtf_fields'][key]))
+                OUTPUT.write('\t' + ';'.join(['None' if v is None else v for
+                                              v in window['gtf_fields'][key]]))
             OUTPUT.write('\n')
 
         # self.findTSSExonIntronOverlap()
@@ -600,7 +617,8 @@ class TSSCalling(object):
                 self.gtf_attribute_fields.remove(entry)
 
         with open(self.detail_file, 'w') as OUTPUT:
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\
+                         \t{}\t{}\t{}'
                          .format(
                             'TSS ID',
                             'Type',
@@ -610,9 +628,12 @@ class TSSCalling(object):
                             'Chromsome',
                             'Position',
                             'Reads',
-                            'Bidirectional?',
-                            'Bidirectional partner',
-                            'Bidirectional distance',
+                            'Divergent?',
+                            'Divergent partner',
+                            'Divergent distance',
+                            'Convergent?',
+                            'Convergent partner',
+                            'Convergent distance',
                             'TSS cluster',
                             'TSSs in associated cluster',
                          ))
@@ -630,11 +651,19 @@ class TSSCalling(object):
                         OUTPUT.write('\tNA')
                 for entry in ['strand', 'chromosome', 'start', 'reads']:
                     OUTPUT.write('\t' + str(tss[entry]))
-                if 'partner' in tss:
+                if 'divergent partner' in tss:
                     OUTPUT.write('\t{}\t{}\t{}'.format(
                         'True',
-                        tss['partner'],
-                        str(tss['bidirectional distance']),
+                        tss['divergent partner'],
+                        str(tss['divergent distance']),
+                    ))
+                else:
+                    OUTPUT.write('\tFalse\tNA\tNA')
+                if 'convergent partner' in tss:
+                    OUTPUT.write('\t{}\t{}\t{}'.format(
+                        'True',
+                        tss['convergent partner'],
+                        str(tss['convergent distance']),
                     ))
                 else:
                     OUTPUT.write('\tFalse\tNA\tNA')
@@ -646,7 +675,11 @@ class TSSCalling(object):
                     OUTPUT.write('\t' + str(tss[entry]))
                 if 'gtf_fields' in tss:
                     for key in self.gtf_attribute_fields:
-                        OUTPUT.write('\t' + ';'.join(tss['gtf_fields'][key]))
+                        # OUTPUT.write('\t' + ';'.join(tss['gtf_fields'][key]))
+                        OUTPUT.write('\t' + ';'.join(
+                            ['None' if v is None else
+                             v for v in tss['gtf_fields'][key]]
+                            ))
                 else:
                     for key in self.gtf_attribute_fields:
                         OUTPUT.write('\tNA')
