@@ -585,7 +585,8 @@ class TSSCalling(object):
                 if int(tss) == int(hit[0]):
                     reads = hit[1]
 
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
+            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\
+                         \t{}\t{}\t{}'
                          .format(
                             tss_id,
                             'unobserved reference TSS',
@@ -595,6 +596,9 @@ class TSSCalling(object):
                             window['chromosome'],
                             str(tss),
                             str(reads),
+                            'NA',
+                            'NA',
+                            'NA',
                             'NA',
                             'NA',
                             'NA',
