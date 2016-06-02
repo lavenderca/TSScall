@@ -3,7 +3,6 @@
 # CREATED BY CHRISTOPHER LAVENDER
 # INTEGRATIVE BIOINFORMATICS, NIEHS
 
-import sys
 import argparse
 
 
@@ -39,12 +38,15 @@ def selectClusterRepresentatives(input_detail, output_bed, output_detail):
                 chromosome,
                 position,
                 reads,
-                bidirectional_flag,
-                bidirectional_partner,
-                bidirectional_distance,
+                divergent_flag,
+                divergent_partner,
+                divergent_distance,
+                convergent_flag,
+                convergent_partner,
+                convergent_distance,
                 tss_cluster,
                 cluster_members
-            ] = line.strip().split('\t')[0:13]
+            ] = line.strip().split('\t')[0:16]
 
             detail_entries[tss_id] = line
 
