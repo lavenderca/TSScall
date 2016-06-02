@@ -6,17 +6,16 @@
 # WORKING OBJECT ORIENTED VERSION
 
 import os
-import math
 import argparse
-import sys
 from operator import itemgetter
 from TSScall import readInReferenceAnnotation
+from collections import defaultdict
 
 
 def makeRangesFromAnnotation(annotation):
-    ranges = []
+    ranges = defaultdict(list)
     for entry in annotation:
-        ranges.append({
+        ranges[annotation[entry]['chromosome']].append({
             'transcript_id': entry,
             'chromosome': annotation[entry]['chromosome'],
             'start': annotation[entry]['tr_start'],
@@ -26,17 +25,19 @@ def makeRangesFromAnnotation(annotation):
             'tss': annotation[entry]['tss'],
         })
         for field in annotation[entry]['gtf_fields']:
-            ranges[-1][field] = annotation[entry]['gtf_fields'][field]
+            ranges[annotation[entry]['chromosome']][-1][field] = \
+                annotation[entry]['gtf_fields'][field]
     return ranges
 
 
 def readInClusters(input_detail_file):
     clusters = dict()
-    cluster_ranges = []
+    cluster_ranges = defaultdict(list)
 
     with open(input_detail_file) as f:
         next(f)
         for line in f:
+            print(line.strip().split('\t')[0:16])
             [
                 tss_id,
                 tss_type,
@@ -46,12 +47,15 @@ def readInClusters(input_detail_file):
                 chromosome,
                 position,
                 reads,
-                bidirectional_flag,
-                bidirectional_partner,
-                bidirectional_distance,
+                divergent_flag,
+                divergent_partner,
+                divergent_distance,
+                convergent_flag,
+                convergent_partner,
+                convergent_distance,
                 tss_cluster,
                 cluster_members
-            ] = line.strip().split('\t')[0:13]
+            ] = line.strip().split('\t')[0:16]
 
             if tss_cluster != "NA":
                 cluster_entry = {
@@ -91,7 +95,7 @@ def readInClusters(input_detail_file):
             if cluster_end < entry['position']:
                 cluster_end = entry['position']
 
-        cluster_ranges.append({
+        cluster_ranges[max_read_entry['chromosome']].append({
             'cluster_id': cluster,
             'representative_tss_id': max_read_entry['tss_id'],
             'representative_tss_position': max_read_entry['position'],
@@ -119,55 +123,69 @@ def findOverlaps(clusters, annotations, key, window):
                 return True
         return False
 
-    for cluster in clusters:
-        overlaps = []
-        proximal = []
-        closest_dist = float('Inf')
-        closest_tss = None
+    for chrom in clusters:
+        for cluster in clusters[chrom]:
+            overlaps = []
+            proximal = []
+            closest_dist = float('Inf')
+            closest_tss = None
+            closest_value = None
 
-        for annotation in annotations:
-            if cluster['chromosome'] == annotation['chromosome']:
-                if checkOverlap(cluster, annotation, 0):
-                    if annotation[key] not in overlaps:
-                        overlaps.append(annotation[key])
-                elif checkOverlap(cluster, annotation, window):
-                    if annotation[key] not in overlaps and\
-                            annotation[key] not in proximal:
-                        proximal.append(annotation[key])
+            for annotation in annotations[chrom]:
+                if cluster['chromosome'] == annotation['chromosome']:
+                    if annotation[key][0] is not None:
+                        annotation_value = annotation[key][0]
+                    else:
+                        annotation_value = annotation['gene_id']
+                    if checkOverlap(cluster, annotation, 0):
+                        if annotation_value not in overlaps:
+                            overlaps.append(annotation_value)
+                    elif checkOverlap(cluster, annotation, window):
+                        if annotation_value not in overlaps and\
+                                annotation_value not in proximal:
+                            proximal.append(annotation_value)
 
-                tss_distance = abs(cluster['representative_tss_position'] -
-                                   annotation['tss'])
-                if tss_distance < closest_dist:
-                    closest_tss = annotation
-                    closest_dist = tss_distance
-                elif tss_distance == closest_dist:
-                    # tie-breakers: (1) upstream?, (2) plus strand?, (3) name
-                    if annotation['tss'] < closest_tss['tss']:
+                    tss_distance = abs(cluster['representative_tss_position'] -
+                                       annotation['tss'])
+                    if closest_tss is None:
                         closest_tss = annotation
-                    elif annotation['tss'] == closest_tss['tss']:
-                        if annotation['strand'] >\
-                                closest_tss['strand']:
+                        closest_value = annotation_value
+                        closest_dist = tss_distance
+                    elif tss_distance < closest_dist:
+                        closest_tss = annotation
+                        closest_value = annotation_value
+                        closest_dist = tss_distance
+                    elif tss_distance == closest_dist:
+                        # tie-breakers: (1) upstream?, (2) plus strand?,
+                        # (3) name
+                        if annotation['tss'] < closest_tss['tss']:
                             closest_tss = annotation
-                        elif annotation['strand'] ==\
-                                closest_tss['strand']:
-                            if annotation[key] < closest_tss[key]:
+                            closest_value = annotation_value
+                        elif annotation['tss'] == closest_tss['tss']:
+                            if annotation['strand'] >\
+                                    closest_tss['strand']:
                                 closest_tss = annotation
+                                closest_value = annotation_value
+                            elif annotation['strand'] ==\
+                                    closest_tss['strand']:
+                                if annotation_value < closest_value:
+                                    closest_value = annotation_value
 
-        cluster.update({
-            'overlapping': overlaps,
-            'proximal': proximal,
-        })
+            cluster.update({
+                'overlapping': overlaps,
+                'proximal': proximal,
+            })
 
-        if closest_tss:
-            cluster.update({
-                'closest_id': closest_tss[key],
-                'closest_dist': closest_dist,
-            })
-        else:
-            cluster.update({
-                'closest_id': 'NA',
-                'closest_dist': 'NA',
-            })
+            if closest_tss:
+                cluster.update({
+                    'closest_id': closest_value,
+                    'closest_dist': closest_dist,
+                })
+            else:
+                cluster.update({
+                    'closest_id': 'NA',
+                    'closest_dist': 'NA',
+                })
 
 
 class ClusterClassify(object):
@@ -180,9 +198,13 @@ class ClusterClassify(object):
         self.id_field = kwargs['identification_field']
         self.proximity_threshold = kwargs['proximity_threshold']
 
+        assert os.path.exists(self.input_detail_file)
+        assert os.path.exists(self.annotation_file)
+
         self.execute()
 
     def printOutput(self, clusters, output_file):
+        cluster_lines = dict()
         with open(output_file, 'w') as OUTPUT:
             OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
                          .format(
@@ -200,11 +222,14 @@ class ClusterClassify(object):
                             'Closest',
                             'Distance to closest',
                          ))
-            for cluster in sorted(clusters, key=itemgetter('cluster_id')):
-                overlapping = ';'.join(cluster['overlapping'])
-                proximal = ';'.join(cluster['proximal'])
-                OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
-                             .format(
+            for chrom in clusters:
+                for cluster in sorted(clusters[chrom],
+                                      key=itemgetter('cluster_id')):
+                    overlapping = ';'.join(cluster['overlapping'])
+                    proximal = ';'.join(cluster['proximal'])
+                    line = (
+                        '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
+                        .format(
                                 cluster['cluster_id'],
                                 cluster['cluster_members'],
                                 cluster['chromosome'],
@@ -217,7 +242,10 @@ class ClusterClassify(object):
                                 cluster['representative_tss_strand'],
                                 cluster['closest_id'],
                                 cluster['closest_dist'],
-                             ))
+                        ))
+                    cluster_lines[cluster['cluster_id']] = line
+            for cluster_id in sorted(cluster_lines):
+                OUTPUT.write(cluster_lines[cluster_id])
 
     def execute(self):
         annotation = readInReferenceAnnotation(self.annotation_file)[0]
