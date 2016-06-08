@@ -7,6 +7,7 @@
 
 import os
 import argparse
+import csv
 from operator import itemgetter
 from TSScall import readInReferenceAnnotation
 from collections import defaultdict
@@ -37,7 +38,6 @@ def readInClusters(input_detail_file):
     with open(input_detail_file) as f:
         next(f)
         for line in f:
-            print(line.strip().split('\t')[0:16])
             [
                 tss_id,
                 tss_type,
@@ -188,6 +188,61 @@ def findOverlaps(clusters, annotations, key, window):
                 })
 
 
+def findClosestActiveTSS(input_detail_file):
+    closest_tss = dict()
+
+    with open(input_detail_file) as f:
+        tss_list = csv.DictReader(f, skipinitialspace=True, delimiter='\t')
+        sorted_list = sorted(tss_list, key=lambda k: (
+            k['Chromosome'],
+            k['Position']
+            ))
+
+        for i, tss in enumerate(sorted_list):
+
+            upstream_tss = None
+            downstream_tss = None
+
+            index = i
+            while index >= 0 and upstream_tss is None:
+                if sorted_list[index]['Type'] == \
+                        'called from reference window' \
+                        and tss['Chromosome'] == \
+                        sorted_list[index]['Chromosome']:
+                    upstream_tss = sorted_list[index]
+                index -= 1
+
+            index = i
+            while index < len(sorted_list) and downstream_tss is None:
+                if sorted_list[index]['Type'] == \
+                        'called from reference window' \
+                        and tss['Chromosome'] == \
+                        sorted_list[index]['Chromosome']:
+                    downstream_tss = sorted_list[index]
+                index += 1
+
+            if upstream_tss and downstream_tss:
+                upstream_distance = abs(
+                    int(tss['Position']) - int(upstream_tss['Position']))
+                downstream_distance = abs(
+                    int(tss['Position']) - int(downstream_tss['Position']))
+                if upstream_distance < downstream_distance:
+                    closest = upstream_tss
+                elif downstream_distance < upstream_distance:
+                    closest = downstream_tss
+                elif upstream_tss == downstream_tss:
+                    closest = upstream_tss
+            elif upstream_tss:
+                closest = upstream_tss
+            elif downstream_tss:
+                closest = downstream_tss
+            else:
+                closest = None
+
+            closest_tss[tss['TSS ID']] = closest
+    return closest_tss
+
+
 class ClusterClassify(object):
 
     def __init__(self, **kwargs):
@@ -201,48 +256,115 @@ class ClusterClassify(object):
         assert os.path.exists(self.input_detail_file)
         assert os.path.exists(self.annotation_file)
 
+        self.non_attribute_fields = [
+            'TSS ID',
+            'Type',
+            'Transcripts',
+            'Gene ID',
+            'Strand',
+            'Chromosome',
+            'Position',
+            'Reads',
+            'Divergent?',
+            'Divergent partner',
+            'Divergent distance',
+            'Convergent?',
+            'Convergent partner',
+            'Convergent distance',
+            'TSS cluster',
+            'TSSs in associated cluster',
+        ]
         self.execute()
 
-    def printOutput(self, clusters, output_file):
+    def printOutput(self, clusters, closest, output_file):
+
+        attribute_fields = []
+        for cluster_id in closest:
+            if closest[cluster_id] is not None:
+                for key in closest[cluster_id]:
+                    if key not in self.non_attribute_fields and \
+                            key not in attribute_fields:
+                        attribute_fields.append(key)
+
         cluster_lines = dict()
         with open(output_file, 'w') as OUTPUT:
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
-                         .format(
-                            'Cluster ID',
-                            'TSSs in cluster',
-                            'Chromosome',
-                            'Cluster start',
-                            'Cluster end',
-                            'Overlapping',
-                            'Proximal (within ' +
-                            str(self.proximity_threshold) + ')',
-                            'Representative TSS',
-                            'Representative TSS position',
-                            'Representative TSS strand',
-                            'Closest',
-                            'Distance to closest',
-                         ))
+            # OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
+            #              .format(
+            header_fields = [
+                'Cluster ID',
+                'TSSs in cluster',
+                'Chromosome',
+                'Cluster start',
+                'Cluster end',
+                'Representative TSS',
+                'Representative TSS position',
+                'Representative TSS strand',
+                'Overlapping genes',
+                'Proximal genes (within ' +
+                str(self.proximity_threshold) + ')',
+                'Closest gene',
+                'Distance to closest gene',
+                'Closest active TSS ID',
+                'Distance to closest active TSS',
+                'Closest active TSS gene ID',
+                'Closest active TSS chromosome',
+                'Closest active TSS position',
+                'Closest active TSS strand',
+            ]
+            for field in attribute_fields:
+                header_fields.append('Closest active TSS ' + field.lower())
+            for i, field in enumerate(header_fields):
+                if i == 0:
+                    OUTPUT.write(field)
+                else:
+                    OUTPUT.write('\t' + field)
+            OUTPUT.write('\n')
+
             for chrom in clusters:
                 for cluster in sorted(clusters[chrom],
                                       key=itemgetter('cluster_id')):
                     overlapping = ';'.join(cluster['overlapping'])
                     proximal = ';'.join(cluster['proximal'])
                     line = (
-                        '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'
+                        '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'
                         .format(
                                 cluster['cluster_id'],
                                 cluster['cluster_members'],
                                 cluster['chromosome'],
                                 str(cluster['start']),
                                 str(cluster['end']),
-                                overlapping,
-                                proximal,
                                 cluster['representative_tss_id'],
                                 cluster['representative_tss_position'],
                                 cluster['representative_tss_strand'],
+                                overlapping,
+                                proximal,
                                 cluster['closest_id'],
                                 cluster['closest_dist'],
                         ))
+
+                    tss_id = cluster['representative_tss_id']
+                    if closest[tss_id] is not None:
+                        line += ('\t{}' * 6).format(
+                            closest[tss_id]
+                            ['TSS ID'],
+                            str(abs(int(closest[tss_id]['Position']) -
+                                int(cluster['representative_tss_position']))),
+                            closest[tss_id]['Gene ID'],
+                            closest[tss_id]['Chromosome'],
+                            closest[tss_id]['Position'],
+                            closest[tss_id]['Strand'],
+                        )
+                        for field in attribute_fields:
+                            if field in closest[tss_id]:
+                                line += '\t' + closest[tss_id][field]
+                            else:
+                                line += '\tNA'
+                    else:
+                        for i in range(6 + len(attribute_fields)):
+                            line += '\tNA'
+
+                    line += '\n'
+
                     cluster_lines[cluster['cluster_id']] = line
             for cluster_id in sorted(cluster_lines):
                 OUTPUT.write(cluster_lines[cluster_id])
@@ -252,10 +374,11 @@ class ClusterClassify(object):
         annotation_ranges = makeRangesFromAnnotation(annotation)
         cluster_ranges = readInClusters(self.input_detail_file)
 
+        closest_TSSs = findClosestActiveTSS(self.input_detail_file)
         findOverlaps(cluster_ranges, annotation_ranges, self.id_field,
                      self.proximity_threshold)
 
-        self.printOutput(cluster_ranges, self.output_file)
+        self.printOutput(cluster_ranges, closest_TSSs, self.output_file)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
