@@ -585,8 +585,7 @@ class TSSCalling(object):
                 if int(tss) == int(hit[0]):
                     reads = hit[1]
 
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\
-                         \t{}\t{}\t{}'
+            OUTPUT.write(('{}' + '\t{}' * 15)
                          .format(
                             tss_id,
                             'unobserved reference TSS',
@@ -621,26 +620,26 @@ class TSSCalling(object):
                 self.gtf_attribute_fields.remove(entry)
 
         with open(self.detail_file, 'w') as OUTPUT:
-            OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\
-                         \t{}\t{}\t{}'
-                         .format(
-                            'TSS ID',
-                            'Type',
-                            'Transcripts',
-                            'Gene ID',
-                            'Strand',
-                            'Chromsome',
-                            'Position',
-                            'Reads',
-                            'Divergent?',
-                            'Divergent partner',
-                            'Divergent distance',
-                            'Convergent?',
-                            'Convergent partner',
-                            'Convergent distance',
-                            'TSS cluster',
-                            'TSSs in associated cluster',
-                         ))
+            OUTPUT.write(
+                ('{}' + '\t{}' * 15)
+                .format(
+                    'TSS ID',
+                    'Type',
+                    'Transcripts',
+                    'Gene ID',
+                    'Strand',
+                    'Chromosome',
+                    'Position',
+                    'Reads',
+                    'Divergent?',
+                    'Divergent partner',
+                    'Divergent distance',
+                    'Convergent?',
+                    'Convergent partner',
+                    'Convergent distance',
+                    'TSS cluster',
+                    'TSSs in associated cluster',
+                    ))
             for field in self.gtf_attribute_fields:
                 OUTPUT.write('\t' + field)
             OUTPUT.write('\n')
