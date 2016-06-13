@@ -133,10 +133,11 @@ def findOverlaps(clusters, annotations, key, window):
 
             for annotation in annotations[chrom]:
                 if cluster['chromosome'] == annotation['chromosome']:
-                    if annotation[key][0] is not None:
+                    if annotation[key][0] is not None and key != 'gene_id' \
+                            and key != 'transcript_id':
                         annotation_value = annotation[key][0]
                     else:
-                        annotation_value = annotation['gene_id']
+                        annotation_value = annotation[key]
                     if checkOverlap(cluster, annotation, 0):
                         if annotation_value not in overlaps:
                             overlaps.append(annotation_value)
@@ -306,6 +307,7 @@ class ClusterClassify(object):
                 'Distance to closest gene',
                 'Closest active TSS ID',
                 'Distance to closest active TSS',
+                'Closest active TSS transcript ID',
                 'Closest active TSS gene ID',
                 'Closest active TSS chromosome',
                 'Closest active TSS position',
@@ -344,11 +346,12 @@ class ClusterClassify(object):
 
                     tss_id = cluster['representative_tss_id']
                     if closest[tss_id] is not None:
-                        line += ('\t{}' * 6).format(
+                        line += ('\t{}' * 7).format(
                             closest[tss_id]
                             ['TSS ID'],
                             str(abs(int(closest[tss_id]['Position']) -
                                 int(cluster['representative_tss_position']))),
+                            closest[tss_id]['Transcripts'],
                             closest[tss_id]['Gene ID'],
                             closest[tss_id]['Chromosome'],
                             closest[tss_id]['Position'],
