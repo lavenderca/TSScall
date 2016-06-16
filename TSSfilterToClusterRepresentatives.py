@@ -4,6 +4,7 @@
 # INTEGRATIVE BIOINFORMATICS, NIEHS
 
 import argparse
+from TSScall import writeBedHeader
 
 
 def printBedEntry(entry, OUTPUT):
@@ -25,6 +26,11 @@ def selectClusterRepresentatives(input_detail, output_bed, output_detail):
         DETAIL_OUTPUT = open(output_detail, 'w')
 
     with open(input_detail) as f, open(output_bed, 'w') as BED_OUTPUT:
+        writeBedHeader(
+            output_bed.split('.bed')[0],
+            'TSScall cluster representatives',
+            BED_OUTPUT,
+        )
         header = next(f)
         if output_detail:
             DETAIL_OUTPUT.write(header)

@@ -12,6 +12,13 @@ import sys
 from operator import itemgetter
 
 
+def writeBedHeader(file_name, description, OUTPUT):
+    OUTPUT.write('track name="{}" description="{}"\n'.format(
+        file_name,
+        description,
+    ))
+
+
 # STRAND_STATUS IS USED TO DETERMINE IF STRAND IS USED IN SORT
 def sortList(input_list, strand_status):
     if strand_status == 'sort_by_strand':
@@ -729,6 +736,11 @@ class TSSCalling(object):
     def writeClusterBed(self, tss_list, cluster_bed):
         clusters = dict()
         with open(cluster_bed, 'w') as OUTPUT:
+            writeBedHeader(
+                cluster_bed.split('.bed')[0],
+                'TSScall clusters',
+                OUTPUT,
+            )
             for tss in tss_list:
                 if tss['cluster'] in clusters:
                     clusters[tss['cluster']]['tss'].append(tss['start'])
@@ -748,6 +760,11 @@ class TSSCalling(object):
 
     def writeBedFile(self, tss_list, output_bed):
         with open(output_bed, 'w') as OUTPUT:
+            writeBedHeader(
+                output_bed.split('.bed')[0],
+                'TSScall TSSs',
+                OUTPUT,
+            )
             for tss in tss_list:
                 OUTPUT.write('{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                     tss['chromosome'],
