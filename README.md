@@ -3,7 +3,7 @@ Developed by Christopher Lavender, National Institute of Environmental Health Sc
 ## Overview
 TSScall identifies transcription start sites (TSSs) from Start-seq data (Nechaev et al. *Science*, 2010). Operating both with and without a reference annotation, TSScall allows for rapid annotation of TSSs across an entire genome.
 ## TSS calling procedure
-TSScall first divides a genome into a series of windows. If a reference annotation is used, windows are first generated at TSSs in the reference.  Windows are then made in other areas of the genome where Start-seq coverage is present but TSSs are annotated in the reference.
+TSScall first divides a genome into a series of windows. If a reference annotation is used, windows are first generated at TSSs in the reference.  Windows are then made in other areas of the genome where Start-seq coverage is present but TSSs are not annotated in the reference.
 
 TSScall divides each window into 200-nt bins. A TSS is called within the bin with the highest total read counts and at the individual nt position with the highest number of reads.  In unannotated windows, this process is performed iteratively: after calling a TSS, all reads within a distance threshold are removed from the window, and calling repeats until no reads are left.
 ## Requirements
