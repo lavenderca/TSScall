@@ -83,8 +83,3 @@ Sets the distance between which unannotated TSSs may be called.  No two nuTSSs m
 `--nutss_filter_size NUTSS_FILTER_SIZE`
 
 Prior to calling of unannotated TSSs, Start-seq reads are filtered based on annotated TSSs and TSSs called from annotation.  If a Start-seq read is within the nuTSS filter size of a TSS in the annotation or called from the annotation, it is filtered prior to unannotated TSS calling. The default value is 750.
-
-## TSS calling procedure
-TSScall first divides a genome into a series of windows. If a reference annotation is used, windows are first generated at TSSs in the reference.  Windows are then made in other areas of the genome where Start-seq coverage is present but TSSs are not annotated in the reference.
-
-TSScall divides each window into 200-nt bins. A TSS is called within the bin with the highest total read counts and at the individual nt position with the highest number of reads.  In unannotated windows, this process is performed iteratively: after calling a TSS, all reads within a distance threshold are removed from the window, and calling repeats until no reads are left.
