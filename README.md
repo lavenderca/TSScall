@@ -88,9 +88,36 @@ Prior to calling of unannotated TSSs, Start-seq reads are filtered based on anno
 
 #### BED output file
 
+The standard output file for TSScall is a list of TSSs in [BED format](http://genome.ucsc.edu/FAQ/FAQformat#format1). Entries are sorted by chromosome and position. TSSs are arbitrarily named by order of strand and position. By default, a TSS name will have the 'nuTSS' prefix. If a TSS corresponds to a transcript in an input annotation, its name will have the 'obsTSS' prefix. The associated transcript can be found in the optional detail file.  
+
+No information is stored in the score column (column 5). A placeholder value of '0' is used to maintain the BED file format.
+
 #### Detail file
 
+The optional detail file contains additional information about each TSS in a tab-delimited TXT file. Column headers are as follows:
+
+* **TSS ID** Name assigned by TSS call.
+* **Type** Type of TSS called. Available types are ...
+* **Transcripts** Semi-colon delimited list of transcript IDs if the TSS was called from annotation.
+* **Gene ID** Semi-colon delimited list of gene IDs if the TSS was called from annotation.
+* **Strand**
+* **Chromosome**
+* **Position**
+* **Reads** Coverage of 5' ends at the called TSS.
+* **Divergent?** Boolean field describing whether or not a divergent TSS was called. 
+* **Divergent partner** If divergent, gives the assigned ID of the divergent TSS.
+* **Divergent distance** The distance from the TSS to its divergent partner.
+* **Convergent?** Boolean field describing whether or not a convergent TSS was called.
+* **Convergent partner** If convergent, gives the assigned ID of the convergent TSS.
+* **Convergent distance** The distance from the TSS to its convergent partner.
+* **TSS cluster** TSScall will associate TSSs into clusters based on proximity. Gives the assigned ID of the cluster.
+* **TSSs in associated cluster** Gives the number of TSSs in the associated cluster. May be helpful in identifying super enhancers.
+
+The detail file also includes any additional information found in the attribute field of the [GTF file](https://useast.ensembl.org/info/website/upload/gff.html). Additional information will have headers consistent with the GTF annotation.
+
 #### Cluster BED file
+
+TSScall will associate TSSs into clusters based on proximity. This file gives the location of TSS clusters in [BED format](http://genome.ucsc.edu/FAQ/FAQformat#format1).
 
 ## Utilities for annotation of results
 
