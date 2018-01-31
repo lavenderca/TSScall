@@ -88,7 +88,7 @@ Prior to calling of unannotated TSSs, Start-seq reads are filtered based on anno
 
 Within the /utils directory are scripts for annotation of TSScall results. Additional scripts may be present in the /utils directory; these scripts may be under development or designed for niche functions.
 
-We recommend follow-up analysis with TSSclassify to related called TSSs to gene models.
+We recommend follow-up analysis with TSSclassify to associate called TSSs with gene models.
 
 ### TSSclassify
 
