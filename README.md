@@ -4,7 +4,7 @@ Developed by Christopher Lavender, National Institute of Environmental Health Sc
 
 ## Overview
 
-TSScall identifies transcription start sites (TSSs) from Start-seq data (Nechaev et al. *Science*, 2010). Operating both with and without a reference annotation, TSScall allows for rapid annotation of TSSs across an entire genome.
+TSScall identifies transcription start sites (TSSs) from Start-seq data (Nechaev et al. *Science*, 2010). TSScall allows for rapid annotation of TSSs across an entire genome.
 
 ## Obtaining TSScall
 
@@ -83,3 +83,17 @@ Sets the distance between which unannotated TSSs may be called.  No two nuTSSs m
 `--nutss_filter_size NUTSS_FILTER_SIZE`
 
 Prior to calling of unannotated TSSs, Start-seq reads are filtered based on annotated TSSs and TSSs called from annotation.  If a Start-seq read is within the nuTSS filter size of a TSS in the annotation or called from the annotation, it is filtered prior to unannotated TSS calling. The default value is 750.
+
+## Utilities for annotation of results
+
+Within the /utils directory are scripts for annotation of TSScall results. Additional scripts may be present in the /utils directory; these scripts may be under development or designed for niche functions.
+
+We recommend follow-up analysis with TSSclassify to related called TSSs to gene models.
+
+### TSSclassify
+
+```Usage```
+
+### TSScompare
+
+```Usage```
