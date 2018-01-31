@@ -84,6 +84,14 @@ Sets the distance between which unannotated TSSs may be called.  No two nuTSSs m
 
 Prior to calling of unannotated TSSs, Start-seq reads are filtered based on annotated TSSs and TSSs called from annotation.  If a Start-seq read is within the nuTSS filter size of a TSS in the annotation or called from the annotation, it is filtered prior to unannotated TSS calling. The default value is 750.
 
+### Output files
+
+#### BED output file
+
+#### Detail file
+
+#### Cluster BED file
+
 ## Utilities for annotation of results
 
 Within the /utils directory are scripts for annotation of TSScall results. Additional scripts may be present in the /utils directory; these scripts may be under development or designed for niche functions.
