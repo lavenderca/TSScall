@@ -92,8 +92,12 @@ We recommend follow-up analysis with TSSclassify to associate called TSSs with g
 
 ### TSSclassify
 
-```Usage```
+```perl TSSclassify.pl DETAIL_FILE GTF_ANNOTATION_FILE```
+
+TSSclassify is a perl script that annotates a TSScall detail file with information from a GTF annotation.
 
 ### TSScompare
 
-```Usage```
+```python TSScompare.py BED_FILE_1 BED_FILE_2```
+
+TSScompare considers two BED files and finds TSSs shared between them. An optional `--distance_threshold INTEGER` or `-d INTEGER` flag may be used to set a distance threshold; any TSSs within this distance threshold will be considered shared. Additional usage information can be found using `python TSScompare.py --help`.
