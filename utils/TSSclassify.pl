@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+#Written by Adam Burkholder, National Institute of Environmental Health Sciences, 2016-17
 
 die "Error: detail and GTF files must be specified\nUsage: TSSclassify [detail file] [GTF]\n" if scalar(@ARGV)==0;
 die "Error: GTF file must be specified\nUsage: TSSclassify [detail file] [GTF]\n" if scalar(@ARGV)==1;
