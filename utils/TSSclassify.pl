@@ -109,7 +109,7 @@ while(<IN>) {
 close(IN);
 foreach $chr(keys(%genes)) {											#loop through transcripts and sort exons by start position
 	foreach $trans(keys(%{$genes{$chr}})) {
-		$genes{$chr}->{$trans}->[5]=[sort {$a->[0] <=> $b->[0]} @{$genes{$chr}->{$trans}->[5]}];	
+		$genes{$chr}->{$trans}->[5]=[sort {$a->[0] <=> $b->[0]} @{$genes{$chr}->{$trans}->[5]}];
 		if($genes{$chr}->{$trans}->[0] eq "-") {							#determine which end of CDS interval to place inside exons, calculate necessary offset to report accurate exon number for minus strand genes
 			$CDS_offset=scalar(@{$genes{$chr}->{$trans}->[5]})+1;
 			$CDS_index=1;
@@ -126,7 +126,7 @@ foreach $chr(keys(%genes)) {											#loop through transcripts and sort exons 
 		if(exists($obs{$trans})) {
 			if($genes{$chr}->{$trans}->[0] eq "+") {
 				$genes{$chr}->{$trans}->[4]->[0]=$obs{$trans};							#obsTSS is transcript start
-				$genes{$chr}->{$trans}->[4]->[1]=$genes{$chr}->{$trans}->[5]->[-1]->[1];			#end of last exon is transcript end	
+				$genes{$chr}->{$trans}->[4]->[1]=$genes{$chr}->{$trans}->[5]->[-1]->[1];			#end of last exon is transcript end
 			}
 			else {
 				$genes{$chr}->{$trans}->[4]->[0]=$genes{$chr}->{$trans}->[5]->[0]->[0];				#start of first exon is transcript start
@@ -145,7 +145,7 @@ foreach $chr(keys(%genes)) {											#loop through transcripts and sort exons 
 			}
 			else {
 				$genes{$chr}->{$trans}->[6]->[4]=$genes{$chr}->{$trans}->[5]->[0]->[1]-$genes{$chr}->{$trans}->[4]->[0]+1;
-			}	
+			}
 		}
 		else {
 			if($genes{$chr}->{$trans}->[0] eq "-") {													#determine observed exon 1 length and 5' UTR length
@@ -216,13 +216,13 @@ foreach $chr(keys(%genes)) {											#loop through transcripts and sort exons 
 #						...
 #						-> [ ]:
 #							-> exon N start
-#							-> exon N end				    
+#							-> exon N end
 #					-> [ ]:
 #						-> CDS start
 #						-> CDS end
 #						-> CDS start within exon
 #						-> observed 5' UTR length
-#						-> observed exon 1 length	
+#						-> observed exon 1 length
 
 for($i=0;$i<scalar(@table);$i++) {					#loop through @table from start to end, every obsTSS encountered becomes "previous" for subsequent nuTSS's
 	if($table[$i]->[0]=~/obsTSS/) {
@@ -387,7 +387,7 @@ for($i=0;$i<scalar(@table);$i++) {									#final pass through @table
 				$table[$i]->[$col_count+6]=$disttemp if $table[$i]->[$col_count+6] eq "X" || ($disttemp<$table[$i]->[$col_count+6] && $disttemp>0);
 			}
 		}
-	}					
+	}
 	$table[$i]->[$col_count+15]=$winners{$id} if $id=~/obsTSS/;
 	@cols=();
 	for($j=12;$j<$col_count;$j++) {
@@ -408,7 +408,7 @@ for($i=0;$i<scalar(@table);$i++) {									#final pass through @table
 			$unique{$_}=0;
 		}
 		$table[$i]->[$k]=join("\;",keys(%unique));
-	}	
+	}
 	$line=join("\t",@{$table[$i]});
 	print "$line\n";
 }
