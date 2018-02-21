@@ -16,7 +16,7 @@ TSScall is run from the commandline.
 
 ``python TSScall.py [OPTIONS] FORWARD_BEDGRAPH REVERSE_BEDGRAPH CHROMOSOME_SIZES OUTPUT_FILE``
 
-`FORWARD_BEDGRAPH` and `REVERSE_BEDGRAPH` are bedGraph files describing the coverage of 5' ends from Start-seq reads.  Stranded coverage is required. `FORWARD_BEDGRAPH` and `REVERSE_BEDGRAPH` describe the coverage for the forward (+) strand and the reverse (-) strand, respectively.
+`FORWARD_BEDGRAPH` and `REVERSE_BEDGRAPH` are bedGraph files describing the coverage of 5' ends from Start-seq reads at single-nucleotide resolution.  Stranded information is required. `FORWARD_BEDGRAPH` and `REVERSE_BEDGRAPH` describe the coverage for the forward (+) strand and the reverse (-) strand, respectively.
 
 5' end coverage may be calculated using the [bedtools utility package](http://bedtools.readthedocs.io/en/latest/). Coverage files may be generated from an alignment in BAM format.
 
@@ -35,7 +35,7 @@ Usage information may be found by running `python TSScall.py --help`.
 
 Sets annotation fie.  The annotation file must be in GTF format.
 
-Setting the annotation file affects how TSScall identifies TSSs. If an annotation file is used, TSScall will search for TSSs within regions centered on annotation-defined TSSs.
+Setting the annotation file affects how TSScall identifies TSSs. If an annotation file is used, TSScall will first search for TSSs within regions centered on annotation-defined TSSs before searching for unannotated TSSs.
 
 `--detail_file DETAIL_FILE`
 
@@ -89,7 +89,7 @@ Sets the distance between which unannotated TSSs may be called.  No two nuTSSs m
 
 `--nutss_filter_size NUTSS_FILTER_SIZE`
 
-Prior to calling of unannotated TSSs, Start-seq reads are filtered based on annotated TSSs and TSSs called from annotation.  If a Start-seq read is within the nuTSS filter size of a TSS in the annotation or called from the annotation, it is filtered prior to unannotated TSS calling. The default value is 750.
+If an annotation is specified, TSScall will first search for TSSs near annotated start sites of gene models before calling additional unannotated TSSs. Prior to calling unannotated TSSs, reads are filtered and not considered in unannotated TSS calling if they are near annotated TSSs. Reads are filtered if they are within the nuTSS filter size of either an annotated TSS or TSS called from annotation. The default nuTSS filter size is 750.
 
 ### Output files
 
