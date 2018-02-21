@@ -39,7 +39,7 @@ for($i=0;$i<scalar(@fields);$i++) {
 	}
 }
 die "Error: \"$ARGV[0]\" does not appear to be a properly formatted detail file\n" if $fields[0] ne "TSS ID" && scalar(@fields)!=15;
-$head.="\tIntersects Gene Model?\tTranscript ID(s)\tGene ID(s)\tGene Name(s)\tType(s)\tSense\/Anti-sense\/Both?\tDistance from obsTSS\tIntersects Exon?\tNearest obsTSS\tTranscript ID(s)\tGene ID(s)\tGene Names(s)\tType(s)\tDistance from nearest\tNearest strand\tNearest obsTSS to [N] nuTSS\'s\tSelected 5\' UTR\tObserved Exon 1 Length\tObserved 5\' UTR Length\tCDS Start Within Exon\n";
+$head.="\tIntersects Gene Model?\tTranscript ID(s)\tGene ID(s)\tGene Name(s)\tType(s)\tSense\/Anti-sense\/Both?\tDistance from obsTSS\tIntersects Exon?\tNearest obsTSS\tTranscript ID(s)\tGene ID(s)\tGene Names(s)\tType(s)\tDistance from nearest\tNearest strand\tNearest obsTSS to [N] uTSS\'s\tSelected 5\' UTR\tObserved Exon 1 Length\tObserved 5\' UTR Length\tCDS Start Within Exon\n";
 while(<IN>) {
 	$_=~s/[\r\n]//g;
 	@fields=split(/\t/,$_);
@@ -224,7 +224,7 @@ foreach $chr(keys(%genes)) {											#loop through transcripts and sort exons 
 #						-> observed 5' UTR length
 #						-> observed exon 1 length
 
-for($i=0;$i<scalar(@table);$i++) {					#loop through @table from start to end, every obsTSS encountered becomes "previous" for subsequent nuTSS's
+for($i=0;$i<scalar(@table);$i++) {					#loop through @table from start to end, every obsTSS encountered becomes "previous" for subsequent uTSS's
 	if($table[$i]->[0]=~/obsTSS/) {
 		$prev=$i;
 		$prevchr=$table[$i]->[5];
@@ -252,7 +252,7 @@ for($i=0;$i<scalar(@table);$i++) {					#loop through @table from start to end, e
 		}
 	}
 }
-for($i=scalar(@table)-1;$i>-1;$i--) {					#loop through @table from end to start, every obsTSS encountered becomes "next" for subsequen nuTSS's
+for($i=scalar(@table)-1;$i>-1;$i--) {					#loop through @table from end to start, every obsTSS encountered becomes "next" for subsequen uTSS's
 	if($table[$i]->[0]=~/obsTSS/) {
 		$next=$i;
 		$nextchr=$table[$i]->[5];
@@ -310,7 +310,7 @@ for($i=0;$i<scalar(@table);$i++) {					#loop through @table again, selecting clo
 		}
 		$winners{$table[$nexts[$i]]->[0]}++ if $table[$i]->[0]!~/annoTSS/;
 	}
-	elsif($table[$i]->[4] eq "+") {				#if previous and next distances equal, select upstream relative to nuTSS
+	elsif($table[$i]->[4] eq "+") {				#if previous and next distances equal, select upstream relative to uTSS
 		$prevstr=$table[$prevs[$i]]->[4];
 		$prevdist*=-1 if $prevstr eq "-";
 		$table[$i]->[$col_count+8]=$table[$prevs[$i]]->[0];

@@ -137,8 +137,8 @@ class TSSCalling(object):
 
         self.fdr_threshold = kwargs['fdr']
         self.false_positives = kwargs['false_positives']
-        self.nutss_filter_size = kwargs['nutss_filter_size']
-        self.nutss_search_window = kwargs['nutss_search_window']
+        self.utss_filter_size = kwargs['utss_filter_size']
+        self.utss_search_window = kwargs['utss_search_window']
         self.bidirectional_threshold = kwargs['bidirectional_threshold']
         self.cluster_threshold = kwargs['cluster_threshold']
         self.detail_file = kwargs['detail_file']
@@ -375,9 +375,9 @@ class TSSCalling(object):
                     'chromosome':
                         self.reference_annotation[transcript]['chromosome'],
                     'start': self.reference_annotation[transcript]['tss'] -
-                        self.nutss_filter_size,
+                        self.utss_filter_size,
                     'end': self.reference_annotation[transcript]['tss'] +
-                        self.nutss_filter_size
+                        self.utss_filter_size
                     })
 
         if self.tss_list != []:
@@ -385,8 +385,8 @@ class TSSCalling(object):
                 filter_windows.append({
                     'strand': tss['strand'],
                     'chromosome': tss['chromosome'],
-                    'start': tss['start'] - self.nutss_filter_size,
-                    'end': tss['start'] + self.nutss_filter_size
+                    'start': tss['start'] - self.utss_filter_size,
+                    'end': tss['start'] + self.utss_filter_size
                     })
 
         return sortList(filter_windows, 'sort_by_strand')
@@ -422,8 +422,8 @@ class TSSCalling(object):
                 windows.append({
                     'strand': entry['strand'],
                     'chromosome': entry['chromosome'],
-                    'start': entry['start'] - self.nutss_search_window,
-                    'end': entry['end'] + self.nutss_search_window,
+                    'start': entry['start'] - self.utss_search_window,
+                    'end': entry['end'] + self.utss_search_window,
                     'hits': []
                     })
 
@@ -881,10 +881,10 @@ class TSSCalling(object):
         self.unannotated_tss_count = self.callTSSsFromIntersection(
             unannotated_search_windows,
             read_threshold,
-            'nuTSS',
+            'uTSS',
             self.unannotated_tss_count,
             'unannotated',
-            self.nutss_search_window
+            self.utss_search_window
             )
 
     def execute(self):
@@ -930,12 +930,12 @@ if __name__ == '__main__':
                         method: less than 0.001)')
     parser.add_argument('--false_positives', default=None, type=int,
                         help='set read threshold by false positive count')
-    parser.add_argument('--nutss_filter_size', default=750, type=int,
-                        help='set nuTSS filter size; any read within INTEGER \
-                        of obsTSS/annoTSS is filtered prior to nuTSS calling \
+    parser.add_argument('--utss_filter_size', default=750, type=int,
+                        help='set uTSS filter size; any read within INTEGER \
+                        of obsTSS/annoTSS is filtered prior to uTSS calling \
                         (Default: 750)')
-    parser.add_argument('--nutss_search_window', default=250, type=int,
-                        help='set nuTSS search window size to INTEGER \
+    parser.add_argument('--utss_search_window', default=250, type=int,
+                        help='set uTSS search window size to INTEGER \
                         (Default: 250)')
     parser.add_argument('--bidirectional_threshold', default=1000, type=int,
                         help='INTEGER threshold to associate bidirectional \
