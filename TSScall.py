@@ -68,39 +68,49 @@ def readInReferenceAnnotation(annotation_file):
     all_gtf_keys = []
     with open(annotation_file) as f:
         for line in f:
-            chromosome, source, feature, start, end, score, strand, frame,\
-                attributes = line.strip().split('\t')
 
-            keys = []
-            values = []
-            gtf_fields = dict()
-            for entry in attributes.split(';')[:-1]:
-                keys.append(entry.split('\"')[0].strip())
-                values.append(entry.split('\"')[1].strip())
-            for key, value in zip(keys, values):
-                gtf_fields[key] = [value]
-            for key in keys:
-                if key not in all_gtf_keys:
-                    all_gtf_keys.append(key)
+            if not line.startswith('#'):  # Check for headers
 
-            tr_id = gtf_fields.pop('transcript_id')[0]
-            gene_id = gtf_fields.pop('gene_id')[0]
-            for val in ('transcript_id', 'gene_id'):
-                all_gtf_keys.remove(val)
+                chromosome, source, feature, start, end, score, strand, \
+                    frame, attributes = line.strip().split('\t')
 
-            if feature == 'exon':
-                ref_id = (tr_id, chromosome)
-                if ref_id not in reference_annotation:
-                    reference_annotation[ref_id] = {
-                        'chromosome': chromosome,
-                        'strand': strand,
-                        'exons': [],
-                        'gene_id': gene_id,
-                        'gtf_fields': gtf_fields,
-                        }
-                reference_annotation[ref_id]['exons'].append(
-                    [int(start), int(end)]
-                    )
+                if feature == 'transcript' or feature == 'exon':
+
+                    keys = []
+                    values = []
+                    gtf_fields = dict()
+
+                    for entry in attributes.split(';')[:-1]:
+                        # Check for key-value pair
+                        if len(entry.split('\"')) > 1:
+                            keys.append(entry.split('\"')[0].strip())
+                            values.append(entry.split('\"')[1].strip())
+                    for key, value in zip(keys, values):
+                        gtf_fields[key] = [value]
+                    for key in keys:
+                        if key not in all_gtf_keys:
+                            all_gtf_keys.append(key)
+
+                    tr_id = gtf_fields.pop('transcript_id')[0]
+                    gene_id = gtf_fields.pop('gene_id')[0]
+                    for val in ('transcript_id', 'gene_id'):
+                        all_gtf_keys.remove(val)
+
+                    if feature == 'exon':
+
+                        ref_id = (tr_id, chromosome)
+                        if ref_id not in reference_annotation:
+                            reference_annotation[ref_id] = {
+                                'chromosome': chromosome,
+                                'strand': strand,
+                                'exons': [],
+                                'gene_id': gene_id,
+                                'gtf_fields': gtf_fields,
+                                }
+                        reference_annotation[ref_id]['exons'].append(
+                            [int(start), int(end)]
+                            )
+
     for ref_id in reference_annotation:
         t = reference_annotation[ref_id]
         # TAKE ADDITIONAL INFORMATION FROM EXON LISTS
