@@ -18,11 +18,11 @@ TSScall is run from the commandline.
 
 `FORWARD_BEDGRAPH` and `REVERSE_BEDGRAPH` are bedGraph files describing the coverage of 5' ends from Start-seq reads at single-nucleotide resolution.  Stranded information is required. `FORWARD_BEDGRAPH` and `REVERSE_BEDGRAPH` describe the coverage for the forward (+) strand and the reverse (-) strand, respectively.
 
-5' end coverage may be calculated using the [bedtools utility package](http://bedtools.readthedocs.io/en/latest/). Coverage files may be generated from an alignment in BAM format.
+5' end coverage may be calculated from an alignment in BAM format using the [samtools](http://www.htslib.org/) and [bedtools](http://bedtools.readthedocs.io/en/latest/) utility packages.
 
 ```
-bedtools genomecov -ibam BAM_FILE -bg -5 -strand + > FORWARD_BEDGRAPH
-bedtools genomecov -ibam BAM_FILE -bg -5 -strand - > REVERSE_BEDGRAPH
+samtools view -b -f 0x0040 BAM_FILE | bedtools genomecov -ibam - -bg -5 -strand + > FORWARD_BEDGRAPH
+samtools view -b -f 0x0040 BAM_FILE | bedtools genomecov -ibam - -bg -5 -strand - > REVERSE_BEDGRAPH
 ```
 
 `CHROMOSOME_SIZES` is a text file describing the size of each chromosome/contig in the reference genome. A sample file in this format can be found [here](http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/hg19.chrom.sizes). For well-established genomes, we recommend generating this file using the USCS `fetchChromosomeSizes` script, found [here](http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/).
