@@ -72,13 +72,21 @@ def selectClusterRepresentatives(input_detail, output_bed, output_detail):
                     clusters[tss_cluster] = [cluster_entry]
 
         for cluster in sorted(clusters):
+
+            obstss_list = [x for x in clusters[cluster]
+                           if x['tss_type'] == 'called from reference window']
+            others_list = [x for x in clusters[cluster]
+                           if x['tss_type'] != 'called from reference window']
+
+            if obstss_list:
+                search_list = obstss_list
+            else:
+                search_list = others_list
+
             max_reads = 0
             max_read_entry = None
-            for entry in clusters[cluster]:
-                if entry['tss_type'] == 'called from reference window':
-                    max_reads = float('Inf')
-                    max_read_entry = entry
-                elif int(entry['reads']) > max_reads:
+            for entry in search_list:
+                if int(entry['reads']) > max_reads:
                     max_reads = int(entry['reads'])
                     max_read_entry = entry
                 elif int(entry['reads']) == max_reads:
